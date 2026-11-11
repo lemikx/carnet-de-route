@@ -18,7 +18,7 @@ const MODE_ICON: Record<TravelMode, string> = {
 };
 
 export function escapeText(s: string): string {
-  return s.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  return s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 }
 
 /** Replie une ligne à 75 octets UTF-8 sans couper un caractère. */

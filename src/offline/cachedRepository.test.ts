@@ -1,5 +1,5 @@
 import { createMemoryRepository } from '../data/memoryRepository';
-import { OfflineError } from '../data/TripRepository';
+import { NotFoundError, OfflineError } from '../data/TripRepository';
 import { createCachedRepository, type KeyValueStore } from './cachedRepository';
 
 function mapStore(): KeyValueStore {
@@ -30,6 +30,25 @@ describe('createCachedRepository', () => {
     const shared = await repo.getSharedRoadbook(link.token);
     online = false;
     expect(await repo.getSharedRoadbook(link.token)).toEqual(shared);
+  });
+
+  it('utilise le cache si le réseau échoue alors que l’appareil se croit en ligne', async () => {
+    const inner = createMemoryRepository();
+    const store = mapStore();
+    const repo = createCachedRepository(inner, () => true, store);
+    const t = await repo.createTrip(trip);
+    const before = await repo.getBundle(t.id);
+    inner.getBundle = async () => { throw new TypeError('Failed to fetch'); };
+    expect(await repo.getBundle(t.id)).toEqual(before);
+  });
+
+  it('ne masque pas un voyage supprimé par le cache', async () => {
+    const inner = createMemoryRepository();
+    const repo = createCachedRepository(inner, () => true, mapStore());
+    const t = await repo.createTrip(trip);
+    await repo.getBundle(t.id);
+    await repo.deleteTrip(t.id);
+    await expect(repo.getBundle(t.id)).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it('échoue hors ligne si rien n’est en cache', async () => {

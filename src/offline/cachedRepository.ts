@@ -1,5 +1,5 @@
 import { get as idbGet, set as idbSet } from 'idb-keyval';
-import { OfflineError, type TripRepository } from '../data/TripRepository';
+import { NotFoundError, OfflineError, type TripRepository } from '../data/TripRepository';
 
 export interface KeyValueStore {
   get(key: string): Promise<unknown>;
@@ -22,7 +22,16 @@ export function createCachedRepository(inner: TripRepository, isOnline: () => bo
         return async (...args: unknown[]) => {
           const key = keyOf(args[0] as string);
           if (isOnline()) {
-            const value = await fn.apply(target, args);
+            let value: unknown;
+            try {
+              value = await fn.apply(target, args);
+            } catch (e) {
+              // Réseau défaillant alors que l'appareil se croit en ligne : on se rabat sur la copie locale.
+              if (e instanceof NotFoundError) throw e;
+              const cached = await store.get(key).catch(() => undefined);
+              if (cached === undefined) throw e;
+              return cached;
+            }
             try {
               await store.set(key, value);
             } catch {

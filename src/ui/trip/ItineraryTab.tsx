@@ -84,7 +84,10 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const apply = useCallback(async (p: Promise<TripBundle>) => setBundle(await p), [setBundle]);
+  const apply = useCallback(async (make: () => Promise<TripBundle>) => {
+    setBundle(await make());
+    return true;
+  }, [setBundle]);
   const action = useSave(apply);
   const busy = action.saving || !online;
 
@@ -94,9 +97,12 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
   const stopById = new Map(bundle.stops.map((s) => [s.id, s]));
   const defaultTz = all.at(-1)?.timezone ?? bundle.trip.homeTimezone;
 
-  function save(dayId: string, input: StopInput, existing?: Stop) {
-    setEditing(null);
-    void action.run(existing ? service.updateStop({ ...existing, ...input }) : service.addStop(dayId, input));
+  async function save(dayId: string, input: StopInput, existing?: Stop) {
+    await action.run(async () => {
+      const b = await (existing ? service.updateStop({ ...existing, ...input }) : service.addStop(dayId, input));
+      setEditing(null);
+      return b;
+    });
   }
 
   function onDragEnd(e: DragEndEvent) {
@@ -115,18 +121,18 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
       const active = stopById.get(activeId)!;
       if (active.dayId === toDay && active.position < over.position) toIndex += 1;
     }
-    void action.run(service.moveStop(activeId, toDay, toIndex));
+    void action.run(() => service.moveStop(activeId, toDay, toIndex));
   }
 
   function move(day: Day, stop: Stop, delta: number) {
     const list = stopsOf(day.id);
     const i = list.findIndex((s) => s.id === stop.id);
-    void action.run(service.moveStop(stop.id, day.id, i + delta));
+    void action.run(() => service.moveStop(stop.id, day.id, i + delta));
   }
 
   async function renameDay(day: Day, title: string) {
     if (title === day.title) return;
-    await action.run(repo.updateDay({ ...day, title }).then(() => repo.getBundle(bundle.trip.id)));
+    await action.run(() => repo.updateDay({ ...day, title }).then(() => repo.getBundle(bundle.trip.id)));
   }
 
   const legLines = (legs: Leg[]) => legs.map((l) => l.geometry ?? []).filter((g) => g.length > 1);
@@ -162,15 +168,15 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
                       <div key={s.id}>
                         {editing?.stop?.id === s.id ? (
                           <StopEditor routing={routing} initial={s} defaultTimezone={defaultTz} disabled={busy}
-                            onSave={(input) => save(day.id, input, s)} onCancel={() => setEditing(null)} />
+                            onSave={(input) => void save(day.id, input, s)} onCancel={() => setEditing(null)} />
                         ) : (
                           <StopCard stop={s} timing={timing.get(s.id)} disabled={busy} index={i} count={stops.length}
                             onEdit={() => setEditing({ dayId: day.id, stop: s })} onDelete={() => setDeleting(s)} onMove={(d) => move(day, s, d)} />
                         )}
                         {leg && next && (
                           <LegRow leg={leg} from={s} to={next} disabled={busy}
-                            onMode={(m) => action.run(service.setLegMode(leg.id, m))}
-                            onDuration={(min) => action.run(service.setLegManual(leg.id, leg.mode, min))} />
+                            onMode={(m) => action.run(() => service.setLegMode(leg.id, m))}
+                            onDuration={(min) => action.run(() => service.setLegManual(leg.id, leg.mode, min))} />
                         )}
                       </div>
                     );
@@ -179,12 +185,12 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
               </SortableContext>
               {outgoing && stopById.get(outgoing.toStopId) && (
                 <LegRow leg={outgoing} from={stops[stops.length - 1]} to={stopById.get(outgoing.toStopId)!} disabled={busy}
-                  onMode={(m) => action.run(service.setLegMode(outgoing.id, m))}
-                  onDuration={(min) => action.run(service.setLegManual(outgoing.id, outgoing.mode, min))} />
+                  onMode={(m) => action.run(() => service.setLegMode(outgoing.id, m))}
+                  onDuration={(min) => action.run(() => service.setLegManual(outgoing.id, outgoing.mode, min))} />
               )}
               {editing && !editing.stop && editing.dayId === day.id ? (
                 <StopEditor routing={routing} defaultTimezone={defaultTz} disabled={busy}
-                  onSave={(input) => save(day.id, input)} onCancel={() => setEditing(null)} />
+                  onSave={(input) => void save(day.id, input)} onCancel={() => setEditing(null)} />
               ) : (
                 <button type="button" className="btn btn-small" style={{ marginTop: 8 }} disabled={busy}
                   onClick={() => setEditing({ dayId: day.id })}>
@@ -200,7 +206,7 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
           onConfirm={() => {
             const id = deleting.id;
             setDeleting(null);
-            void action.run(service.removeStop(id));
+            void action.run(() => service.removeStop(id));
           }}
           onCancel={() => setDeleting(null)}>
           {deleting.reservationId && <p>Cette étape vient d’une réservation : elle sera recréée si tu modifies la réservation.</p>}

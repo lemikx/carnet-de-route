@@ -32,9 +32,9 @@ function AddItem({ category, disabled, onAdd }: { category: ChecklistCategory; d
 export function ChecklistTab({ bundle, setBundle }: TripTabProps) {
   const { repo } = useApp();
   const online = useOnline();
-  const action = useSave(useCallback(async (p: Promise<unknown>) => {
+  const action = useSave(useCallback(async (make: () => Promise<unknown>) => {
     try {
-      await p;
+      await make();
     } finally {
       // Relit l'état réel (annule l'affichage immédiat si l'enregistrement a échoué).
       setBundle(await repo.getBundle(bundle.trip.id) as TripBundle);
@@ -46,7 +46,7 @@ export function ChecklistTab({ bundle, setBundle }: TripTabProps) {
 
   const save = (i: ChecklistItem) => {
     setBundle({ ...bundle, checklist: bundle.checklist.map((x) => (x.id === i.id ? i : x)) });
-    return action.run(repo.saveChecklistItem(i));
+    return action.run(() => repo.saveChecklistItem(i));
   };
   return (
     <div>
@@ -65,12 +65,12 @@ export function ChecklistTab({ bundle, setBundle }: TripTabProps) {
                   <span className="label">{i.label}</span>
                   {i.dueDate && <span className={isOverdue(i, now) ? 'overdue' : 'muted'}>avant le {formatDate(i.dueDate)}</span>}
                   <button type="button" className="btn-link btn-danger-text" aria-label={`Supprimer ${i.label}`} disabled={disabled}
-                    onClick={() => action.run(repo.deleteChecklistItem(i.id))}>✕</button>
+                    onClick={() => action.run(() => repo.deleteChecklistItem(i.id))}>✕</button>
                 </li>
               ))}
             </ul>
             <AddItem category={cat.id} disabled={disabled}
-              onAdd={(label, dueDate) => action.run(repo.saveChecklistItem({ tripId: bundle.trip.id, category: cat.id, label, done: false, dueDate, position: items.length }))} />
+              onAdd={(label, dueDate) => action.run(() => repo.saveChecklistItem({ tripId: bundle.trip.id, category: cat.id, label, done: false, dueDate, position: items.length }))} />
           </section>
         );
       })}

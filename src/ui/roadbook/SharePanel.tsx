@@ -19,8 +19,8 @@ export function SharePanel({ tripId }: { tripId: string }) {
   const link = useAsync(() => repo.getShareLink(tripId), [repo, tripId]);
   const [hide, setHide] = useState(true);
   const [confirmRevoke, setConfirmRevoke] = useState(false);
-  const action = useSave(useCallback(async (p: Promise<unknown>) => {
-    await p;
+  const action = useSave(useCallback(async (make: () => Promise<unknown>) => {
+    await make();
     await link.reload();
   }, [link]));
   const disabled = !online || action.saving;
@@ -41,7 +41,7 @@ export function SharePanel({ tripId }: { tripId: string }) {
             {typeof navigator !== 'undefined' && 'share' in navigator && (
               <button type="button" className="btn btn-small" onClick={() => navigator.share({ title: 'Roadbook', url }).catch(() => {})}>Partager</button>
             )}
-            <button type="button" className="btn btn-small" disabled={disabled} onClick={() => action.run(repo.createShareLink(tripId, current.hideSensitive))}>Nouveau lien</button>
+            <button type="button" className="btn btn-small" disabled={disabled} onClick={() => action.run(() => repo.createShareLink(tripId, current.hideSensitive))}>Nouveau lien</button>
             <button type="button" className="btn btn-small btn-danger-text" disabled={disabled} onClick={() => setConfirmRevoke(true)}>Désactiver le lien</button>
           </div>
           <p className="muted">Ta famille voit toujours la version à jour, sans compte et sans pouvoir modifier. « Nouveau lien » coupe l’ancien.</p>
@@ -55,7 +55,7 @@ export function SharePanel({ tripId }: { tripId: string }) {
           <p className="muted">Numéros de réservation, prix, liens de réservation et notes personnelles ne seront pas visibles.</p>
           <p className="alert">{SHARE_WARNING}</p>
           <div>
-            <button type="button" className="btn btn-primary" disabled={disabled} onClick={() => action.run(repo.createShareLink(tripId, hide))}>Créer un lien</button>
+            <button type="button" className="btn btn-primary" disabled={disabled} onClick={() => action.run(() => repo.createShareLink(tripId, hide))}>Créer un lien</button>
           </div>
         </>
       )}
@@ -63,7 +63,7 @@ export function SharePanel({ tripId }: { tripId: string }) {
       <SaveError error={action.error} onRetry={action.retry} />
       {confirmRevoke && (
         <ConfirmDialog title="Désactiver le lien de partage ?" confirmLabel="Désactiver" danger
-          onConfirm={() => { setConfirmRevoke(false); void action.run(repo.revokeShareLink(tripId)); }}
+          onConfirm={() => { setConfirmRevoke(false); void action.run(() => repo.revokeShareLink(tripId)); }}
           onCancel={() => setConfirmRevoke(false)}>
           <p>Les personnes qui ont le lien ne pourront plus voir le roadbook.</p>
         </ConfirmDialog>

@@ -52,6 +52,20 @@ export const ERROR_MESSAGES: Record<RoutingErrorCode, string> = {
   UNAUTHORIZED: 'Accès refusé au service de calcul',
 };
 
+/** Rôle du jeton (sa signature est déjà vérifiée par Supabase, verify_jwt = true). */
+export function tokenRole(authorization: string | null): string | null {
+  const token = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+  const payload = token?.split('.')[1];
+  if (!payload) return null;
+  try {
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '='));
+    const role = (JSON.parse(json) as { role?: unknown }).role;
+    return typeof role === 'string' ? role : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Traite une requête POST de l'appli. `fetchImpl` et `tz` sont injectés (Deno en production, simulés en test). */
 export async function handleRoutes(
   req: Request,
@@ -61,6 +75,10 @@ export async function handleRoutes(
     new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...CORS } });
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
   if (req.method !== 'POST') return json({ code: 'NETWORK', message: 'Méthode non autorisée' }, 405);
+  // La clé publique « anon » est un jeton valide : on exige un utilisateur réellement connecté.
+  if (tokenRole(req.headers.get('Authorization')) !== 'authenticated') {
+    return json({ code: 'UNAUTHORIZED', message: ERROR_MESSAGES.UNAUTHORIZED }, 401);
+  }
 
   let body: { action?: string; query?: string; from?: { lat: number; lon: number }; to?: { lat: number; lon: number }; mode?: AutoMode };
   try {
@@ -68,10 +86,11 @@ export async function handleRoutes(
   } catch {
     return json({ code: 'NETWORK', message: 'Requête invalide' }, 400);
   }
+  if (!body || typeof body !== 'object') return json({ code: 'NETWORK', message: 'Requête invalide' }, 400);
 
   let url: string;
   let init: RequestInit = { headers: { Authorization: deps.apiKey } };
-  if (body.action === 'geocode' && body.query) {
+  if (body.action === 'geocode' && typeof body.query === 'string' && body.query.length <= 200) {
     url = `${ORS_BASE}/geocode/search?text=${encodeURIComponent(body.query)}&size=5&lang=fr`;
   } else if (body.action === 'route' && body.from && body.to && body.mode && ORS_PROFILES[body.mode]) {
     url = `${ORS_BASE}/v2/directions/${ORS_PROFILES[body.mode]}/geojson`;

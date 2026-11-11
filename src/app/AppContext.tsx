@@ -11,6 +11,7 @@ import type { RoutingService } from '../routing/RoutingService';
 import { createTripService, type TripService } from '../services/tripService';
 import { DEFAULT_HEAVY_THRESHOLD_MIN } from '../domain/schedule';
 import { getDataMode, type DataMode } from './config';
+import { isNetworkAuthError, readLastEmail, resolveUser, writeLastEmail, type AppUser } from './auth';
 
 export interface Settings {
   heavyThresholdMin: number;
@@ -21,7 +22,7 @@ export interface AppValue {
   repo: TripRepository;
   service: TripService;
   routing: RoutingService;
-  user: { email: string } | null;
+  user: AppUser | null;
   authReady: boolean;
   supabase: SupabaseClient | null;
   supabaseUrl: string;
@@ -78,7 +79,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const mode = getDataMode(env);
   const supabaseUrl = env.VITE_SUPABASE_URL ?? '';
   const [settings, setSettingsState] = useState<Settings>(loadSettings);
-  const [user, setUser] = useState<{ email: string } | null>(mode === 'memory' ? { email: 'démo' } : null);
+  const [user, setUser] = useState<AppUser | null>(mode === 'memory' ? { email: 'démo' } : null);
   const [authReady, setAuthReady] = useState(mode === 'memory');
 
   const core = useMemo(() => {
@@ -96,15 +97,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!core.supabase) return;
     const sb = core.supabase;
-    sb.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user.email ? { email: data.session.user.email } : null);
+    const apply = (email: string | null, networkError = false) => {
+      const u = resolveUser(email, { online: isOnlineNow(), lastEmail: readLastEmail(), networkError });
+      if (u && !u.offlineOnly) writeLastEmail(u.email);
+      setUser(u);
       setAuthReady(true);
-    });
+    };
+    const check = () =>
+      sb.auth.getSession().then(
+        ({ data, error }) => apply(data.session?.user.email ?? null, isNetworkAuthError(error)),
+        (e) => apply(null, isNetworkAuthError(e)),
+      );
+    void check();
     const { data } = sb.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user.email ? { email: session.user.email } : null);
-      setAuthReady(true);
+      // Hors ligne, une session non renouvelable ne doit pas déconnecter l'utilisateur.
+      if (!session && !isOnlineNow()) return apply(null, true);
+      apply(session?.user.email ?? null);
     });
-    return () => data.subscription.unsubscribe();
+    window.addEventListener('online', check);
+    return () => {
+      data.subscription.unsubscribe();
+      window.removeEventListener('online', check);
+    };
   }, [core.supabase]);
 
   const value = useMemo<AppValue>(
@@ -133,7 +147,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
       async signOut() {
+        writeLastEmail(null);
         await core.supabase?.auth.signOut();
+        setUser(null);
       },
     }),
     [mode, core, user, authReady, supabaseUrl, settings],

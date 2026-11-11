@@ -1,4 +1,4 @@
-import { mapOrsError, toGeocodeResults, toRouteResult, ORS_PROFILES } from './ors';
+import { handleRoutes, mapOrsError, toGeocodeResults, toRouteResult, ORS_PROFILES } from './ors';
 
 describe('ors', () => {
   it('traduit les erreurs ORS', () => {
@@ -31,5 +31,38 @@ describe('ors', () => {
 
   it('utilise les bons profils', () => {
     expect(ORS_PROFILES).toEqual({ car: 'driving-car', walk: 'foot-walking', bike: 'cycling-regular' });
+  });
+});
+
+describe('handleRoutes : accès', () => {
+  const jwt = (payload: object) => `x.${btoa(JSON.stringify(payload)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')}.y`;
+  const deps = () => ({
+    apiKey: 'k',
+    tz: () => 'Asia/Tokyo',
+    fetchImpl: vi.fn(async () => new Response(JSON.stringify({ features: [] }), { status: 200 })) as unknown as typeof fetch,
+  });
+  const req = (token?: string) =>
+    new Request('https://x/routes', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: JSON.stringify({ action: 'geocode', query: 'Kyoto' }),
+    });
+
+  it('refuse la clé publique anon', async () => {
+    const d = deps();
+    const res = await handleRoutes(req(jwt({ role: 'anon' })), d);
+    expect(res.status).toBe(401);
+    expect(d.fetchImpl).not.toHaveBeenCalled();
+  });
+  it('refuse une requête sans jeton', async () => {
+    expect((await handleRoutes(req(), deps())).status).toBe(401);
+  });
+  it('accepte un utilisateur connecté', async () => {
+    const res = await handleRoutes(req(jwt({ role: 'authenticated', sub: 'u1' })), deps());
+    expect(res.status).toBe(200);
+  });
+  it('rejette un corps vide sans planter', async () => {
+    const r = new Request('https://x/routes', { method: 'POST', headers: { Authorization: `Bearer ${jwt({ role: 'authenticated' })}` }, body: 'null' });
+    expect((await handleRoutes(r, deps())).status).toBe(400);
   });
 });

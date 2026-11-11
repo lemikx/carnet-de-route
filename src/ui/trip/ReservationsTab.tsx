@@ -25,7 +25,17 @@ export function ReservationsTab({ bundle, setBundle }: TripTabProps) {
   const online = useOnline();
   const [editing, setEditing] = useState<Reservation | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Reservation | null>(null);
-  const action = useSave(useCallback(async (p: Promise<TripBundle>) => setBundle(await p), [setBundle]));
+  const action = useSave(useCallback(async (make: () => Promise<TripBundle>) => {
+    setBundle(await make());
+    return true;
+  }, [setBundle]));
+  // La fermeture du formulaire fait partie de l'action : « Réessayer » la refait aussi.
+  const saveAndClose = (make: () => Promise<TripBundle>) =>
+    action.run(async () => {
+      const b = await make();
+      setEditing(null);
+      return b;
+    });
   const disabled = !online || action.saving;
   const tz = bundle.stops.at(-1)?.timezone ?? bundle.trip.homeTimezone;
   const inTrip = (r: Reservation) => r.startAt.date >= bundle.trip.startDate && r.startAt.date <= bundle.trip.endDate;
@@ -35,7 +45,7 @@ export function ReservationsTab({ bundle, setBundle }: TripTabProps) {
       <SaveError error={action.error} onRetry={action.retry} />
       {editing === 'new' ? (
         <ReservationForm routing={routing} tripId={bundle.trip.id} defaultTimezone={tz} disabled={disabled}
-          onSave={(r) => { setEditing(null); void action.run(service.saveReservation(r)); }} onCancel={() => setEditing(null)} />
+          onSave={(r) => void saveAndClose(() => service.saveReservation(r))} onCancel={() => setEditing(null)} />
       ) : (
         <button className="btn btn-primary" onClick={() => setEditing('new')} disabled={disabled} style={{ marginBottom: 12 }}>
           Ajouter une réservation
@@ -47,7 +57,7 @@ export function ReservationsTab({ bundle, setBundle }: TripTabProps) {
           editing !== 'new' && editing?.id === r.id ? (
             <li key={r.id}>
               <ReservationForm routing={routing} tripId={bundle.trip.id} initial={r} defaultTimezone={tz} disabled={disabled}
-                onSave={(x) => { setEditing(null); void action.run(service.saveReservation(x)); }} onCancel={() => setEditing(null)} />
+                onSave={(x) => void saveAndClose(() => service.saveReservation(x))} onCancel={() => setEditing(null)} />
             </li>
           ) : (
             <li key={r.id} className="card" data-testid="reservation">
@@ -78,7 +88,7 @@ export function ReservationsTab({ bundle, setBundle }: TripTabProps) {
       </ul>
       {deleting && (
         <ConfirmDialog title={`Supprimer « ${deleting.title} » ?`} confirmLabel="Supprimer" danger
-          onConfirm={() => { const id = deleting.id; setDeleting(null); void action.run(service.deleteReservation(id)); }}
+          onConfirm={() => { const id = deleting.id; setDeleting(null); void action.run(() => service.deleteReservation(id)); }}
           onCancel={() => setDeleting(null)}>
           <p>Les étapes créées par cette réservation seront aussi retirées de l’itinéraire.</p>
         </ConfirmDialog>

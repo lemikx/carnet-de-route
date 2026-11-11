@@ -100,6 +100,11 @@ describe('buildCalendar', () => {
     );
   });
 
+  it('échappe les points-virgules', () => {
+    const r = makeReservation({ id: 'R3', title: 'Musée; entrée' });
+    expect(buildCalendar(bundle({ reservations: [r] }), ALL, NOW)).toContain('SUMMARY:Musée\\; entrée');
+  });
+
   it('replie les lignes longues et échappe les caractères spéciaux', () => {
     const title = 'Visite guidée du château, des jardins à la française et des écuries royales — ' + 'é'.repeat(42);
     const r = makeReservation({ id: 'R2', title, fromPlace: place('Versailles', 'Europe/Paris') });

@@ -254,16 +254,49 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
     async saveReservation(r) {
       const saved = await repo.saveReservation(r);
       let bundle = await repo.getBundle(saved.tripId);
-      for (const s of bundle.stops.filter((x) => x.reservationId === saved.id)) await repo.deleteStop(s.id);
-      for (const draft of reservationToStops(saved).stops) {
+      const dayDate = new Map(bundle.days.map((d) => [d.id, d.date]));
+      // Étapes déjà liées, dans l'ordre (départ puis arrivée) : on les met à jour sur place
+      // pour conserver leurs notes et les trajets saisis autour d'elles.
+      const existing = bundle.stops
+        .filter((s) => s.reservationId === saved.id)
+        .sort((a, b) => (dayDate.get(a.dayId) ?? '').localeCompare(dayDate.get(b.dayId) ?? '') || a.position - b.position);
+      const drafts = reservationToStops(saved).stops;
+
+      for (const [i, draft] of drafts.entries()) {
         bundle = await repo.getBundle(saved.tripId);
         const day = bundle.days.find((d) => d.date === draft.date);
-        if (!day) continue;
+        const current = existing[i];
         const { date: _date, ...input } = draft;
         void _date;
-        const dayStops = bundle.stops.filter((s) => s.dayId === day.id).sort((a, b) => a.position - b.position);
-        await insertStop(bundle, day.id, input, insertIndex(dayStops, input.kind, input.startTime));
+        if (!day) {
+          if (current) await repo.deleteStop(current.id);
+          continue;
+        }
+        if (!current) {
+          const dayStops = bundle.stops.filter((s) => s.dayId === day.id).sort((a, b) => a.position - b.position);
+          await insertStop(bundle, day.id, input, insertIndex(dayStops, input.kind, input.startTime));
+          continue;
+        }
+        const updated: Stop = {
+          ...current,
+          kind: input.kind, title: input.title, address: input.address, lat: input.lat, lon: input.lon,
+          timezone: input.timezone, startTime: input.startTime,
+          phone: input.phone || current.phone, url: input.url || current.url,
+        };
+        if (current.dayId === day.id) {
+          await repo.saveStop(updated);
+        } else {
+          const oldDay = bundle.stops.filter((s) => s.dayId === current.dayId && s.id !== current.id).sort((a, b) => a.position - b.position);
+          await repo.reorderStops(current.dayId, oldDay.map((s) => s.id));
+          const target = bundle.stops.filter((s) => s.dayId === day.id).sort((a, b) => a.position - b.position);
+          await repo.saveStop({ ...updated, dayId: day.id, position: target.length });
+          const ids = target.map((s) => s.id);
+          ids.splice(insertIndex(target, updated.kind, updated.startTime), 0, current.id);
+          await repo.reorderStops(day.id, ids);
+        }
       }
+      for (const extra of existing.slice(drafts.length)) await repo.deleteStop(extra.id);
+
       bundle = await repo.getBundle(saved.tripId);
       for (const day of bundle.days) {
         const ids = bundle.stops.filter((s) => s.dayId === day.id).sort((a, b) => a.position - b.position).map((s) => s.id);

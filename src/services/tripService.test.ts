@@ -118,6 +118,35 @@ describe('TripService', () => {
     expect(order).toEqual(['Temple', 'Musée', 'Parc', 'Hôtel']);
   });
 
+  it('modifier une réservation garde l’étape liée, sa note et les trajets saisis à la main', async () => {
+    const { service, repo } = setup();
+    const b = await service.createTrip(tripInput());
+    const d1 = b.days.sort((x, y) => x.date.localeCompare(y.date))[0];
+    let r = await service.saveReservation({
+      tripId: b.trip.id, type: 'lodging', title: 'Hôtel', startAt: { date: '2026-12-01', time: '15:00', timezone: 'Asia/Tokyo' },
+      endAt: null, fromPlace: null, toPlace: { title: 'Hôtel', address: 'Kyoto', lat: 35, lon: 135.7, timezone: 'Asia/Tokyo' },
+      confirmationNumber: 'A1', price: null, currency: 'EUR', url: '', phone: '', note: '',
+    });
+    const hotel = r.stops.find((s) => s.reservationId)!;
+    await repo.saveStop({ ...hotel, note: 'Code porte 1234' });
+    const d2 = r.days.find((d) => d.date === '2026-12-02')!;
+    r = await service.addStop(d2.id, stop('Gare', 35.1, 135.8));
+    const leg = r.legs.find((l) => l.fromStopId === hotel.id)!;
+    r = await service.setLegManual(leg.id, 'train', 45);
+
+    r = await service.saveReservation({ ...r.reservations[0], confirmationNumber: 'B2' });
+    const after = r.stops.find((s) => s.reservationId)!;
+    expect(after.id).toBe(hotel.id);
+    expect(after.note).toBe('Code porte 1234');
+    expect(r.legs.find((l) => l.fromStopId === hotel.id)).toMatchObject({ mode: 'train', durationMin: 45, source: 'manual' });
+
+    r = await service.saveReservation({ ...r.reservations[0], startAt: { date: '2026-12-02', time: '15:00', timezone: 'Asia/Tokyo' } });
+    const moved = r.stops.find((s) => s.reservationId)!;
+    expect(moved.id).toBe(hotel.id);
+    expect(moved.dayId).toBe(d2.id);
+    expect(d1.id).not.toBe(d2.id);
+  });
+
   it('ne crée pas de lieu pour une réservation hors des dates du voyage', async () => {
     const { service } = setup();
     const b = await service.createTrip(tripInput());

@@ -20,9 +20,10 @@ export function CalendarPanel({ bundle }: { bundle: TripBundle }) {
   const tripId = bundle.trip.id;
   const link = useAsync(() => (open ? repo.getCalendarLink(tripId) : Promise.resolve(null)), [repo, tripId, open]);
   const [opts, setOpts] = useState<CalendarOptions>({ includeLegs: true, includeChecklist: true });
-  const action = useSave(useCallback(async (p: Promise<unknown>) => {
-    await p;
+  const action = useSave(useCallback(async (make: () => Promise<unknown>) => {
+    await make();
     await link.reload();
+    return true;
   }, [link]));
   const current = link.data;
   const effective = current ? { includeLegs: current.includeLegs, includeChecklist: current.includeChecklist } : opts;
@@ -32,11 +33,11 @@ export function CalendarPanel({ bundle }: { bundle: TripBundle }) {
   function setOption(k: keyof CalendarOptions, v: boolean) {
     const next = { ...effective, [k]: v };
     setOpts(next);
-    if (current) void action.run(repo.updateCalendarOptions(tripId, next));
+    if (current) void action.run(() => repo.updateCalendarOptions(tripId, next));
   }
 
   async function subscribe() {
-    const created = await action.run(repo.createCalendarLink(tripId, effective));
+    const created = await action.run(() => repo.createCalendarLink(tripId, effective));
     const l = await repo.getCalendarLink(tripId);
     if (created !== undefined && l && canSubscribe) window.location.href = download.calendarFeedUrl(supabaseUrl, l.token);
   }
@@ -72,7 +73,7 @@ export function CalendarPanel({ bundle }: { bundle: TripBundle }) {
                 <div className="trip-actions">
                   {canSubscribe && <CopyButton value={download.calendarHttpsUrl(supabaseUrl, current.token)} label="Copier l’adresse" />}
                   {canSubscribe && <a className="btn btn-small" href={download.calendarFeedUrl(supabaseUrl, current.token)}>Ouvrir dans Calendrier</a>}
-                  <button type="button" className="btn btn-small" disabled={disabled} onClick={() => action.run(repo.createCalendarLink(tripId, effective))}>Nouvelle adresse</button>
+                  <button type="button" className="btn btn-small" disabled={disabled} onClick={() => action.run(() => repo.createCalendarLink(tripId, effective))}>Nouvelle adresse</button>
                   <button type="button" className="btn btn-small btn-danger-text" disabled={disabled} onClick={() => setConfirmRevoke(true)}>Désactiver</button>
                 </div>
                 <p className="muted">Calendrier vérifie les changements environ toutes les heures.</p>
@@ -92,7 +93,7 @@ export function CalendarPanel({ bundle }: { bundle: TripBundle }) {
       )}
       {confirmRevoke && (
         <ConfirmDialog title="Désactiver l’abonnement ?" confirmLabel="Désactiver" danger
-          onConfirm={() => { setConfirmRevoke(false); void action.run(repo.revokeCalendarLink(tripId)); }}
+          onConfirm={() => { setConfirmRevoke(false); void action.run(() => repo.revokeCalendarLink(tripId)); }}
           onCancel={() => setConfirmRevoke(false)}>
           <p>L’adresse ne renverra plus rien. Selon Calendrier, les événements déjà affichés peuvent rester : supprime l’abonnement dans Calendrier pour les retirer.</p>
         </ConfirmDialog>

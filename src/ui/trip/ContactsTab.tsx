@@ -44,17 +44,23 @@ export function ContactsTab({ bundle, setBundle }: TripTabProps) {
   const { repo } = useApp();
   const online = useOnline();
   const [editing, setEditing] = useState<Contact | 'new' | null>(null);
-  const action = useSave(useCallback(async (p: Promise<unknown>) => {
-    await p;
+  const action = useSave(useCallback(async (make: () => Promise<unknown>) => {
+    await make();
     setBundle(await repo.getBundle(bundle.trip.id));
+    return true;
   }, [repo, bundle.trip.id, setBundle]));
+  const saveAndClose = (make: () => Promise<unknown>) =>
+    action.run(async () => {
+      await make();
+      setEditing(null);
+    });
   const disabled = !online || action.saving;
   return (
     <div>
       <SaveError error={action.error} onRetry={action.retry} />
       {editing === 'new' ? (
         <ContactForm initial={empty} disabled={disabled} onCancel={() => setEditing(null)}
-          onSave={(d) => { setEditing(null); void action.run(repo.saveContact({ ...d, tripId: bundle.trip.id })); }} />
+          onSave={(d) => void saveAndClose(() => repo.saveContact({ ...d, tripId: bundle.trip.id }))} />
       ) : (
         <button className="btn btn-primary" onClick={() => setEditing('new')} disabled={disabled} style={{ marginBottom: 12 }}>Ajouter un contact</button>
       )}
@@ -66,7 +72,7 @@ export function ContactsTab({ bundle, setBundle }: TripTabProps) {
           editing !== 'new' && editing?.id === c.id ? (
             <li key={c.id}>
               <ContactForm initial={c} disabled={disabled} onCancel={() => setEditing(null)}
-                onSave={(d) => { setEditing(null); void action.run(repo.saveContact({ ...c, ...d })); }} />
+                onSave={(d) => void saveAndClose(() => repo.saveContact({ ...c, ...d }))} />
             </li>
           ) : (
             <li key={c.id} className="card">
@@ -76,7 +82,7 @@ export function ContactsTab({ bundle, setBundle }: TripTabProps) {
               {c.note && <p>{c.note}</p>}
               <div className="trip-actions" style={{ justifyContent: 'flex-end' }}>
                 <button className="btn btn-small" onClick={() => setEditing(c)} disabled={disabled}>Modifier</button>
-                <button className="btn btn-small btn-danger-text" onClick={() => action.run(repo.deleteContact(c.id))} disabled={disabled}>Supprimer</button>
+                <button className="btn btn-small btn-danger-text" onClick={() => action.run(() => repo.deleteContact(c.id))} disabled={disabled}>Supprimer</button>
               </div>
             </li>
           ),
