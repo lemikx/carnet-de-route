@@ -129,3 +129,21 @@ Puis dans **Réglages → Nom affiché sur les roadbooks partagés**, saisis `le
 | « Calcul impossible : reconnecte-toi » | Session expirée | Se déconnecter / reconnecter |
 | « Calcul indisponible pour aujourd'hui » | Limite gratuite OpenRouteService atteinte | Saisir la durée à la main, ça repart le lendemain |
 | L'abonnement calendrier ne se met pas à jour | Calendrier vérifie environ toutes les heures | Patienter ou forcer : Calendrier → Actualiser |
+
+---
+
+## Ajouter le budget à une base déjà en service
+
+Si ta base a été créée avant l'arrivée du budget (étape 2), il suffit d'ajouter **une seule migration** :
+
+1. Dans Supabase, ouvre **SQL Editor → New query**.
+2. Ouvre le fichier `supabase/migrations/0005_budget.sql` du dépôt, copie tout son contenu et colle-le.
+3. Clique sur **Run**. Si l'éditeur affiche l'avertissement sur les tables sans RLS, choisis **Run and enable RLS**.
+4. Résultat attendu : **« Success. No rows returned »**.
+
+Ne lance **pas** `setup-complet.sql` sur une base qui existe déjà : il recréerait des tables déjà présentes.
+
+La migration retire aussi l'enveloppe du budget des données du **roadbook partagé** et du **calendrier** : elles n'y apparaissent jamais.
+
+### Taux de change
+Les taux viennent du service gratuit **Frankfurter** (taux de la Banque centrale européenne), appelé directement par l'appli. Si le service est indisponible, l'appli garde le dernier taux connu et te laisse saisir le taux à la main.
