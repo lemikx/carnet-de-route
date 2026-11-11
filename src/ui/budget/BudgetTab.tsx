@@ -1,10 +1,16 @@
-import { useState } from 'react';
-import { formatEur } from '../../domain/budget/money';
+import { useMemo, useState } from 'react';
+import { computeAdvice, type Advice } from '../../domain/budget/advice';
+import { tripDays } from '../../domain/budget/planned';
+import { settingsOf } from '../../domain/budget/types';
 import { useOnline } from '../../offline/useOnline';
+import { SaveError } from '../common/SaveError';
 import type { TripTabProps } from '../trip/types';
+import { AdvicePanel } from './AdvicePanel';
 import { ExpensesList } from './ExpensesList';
 import { LinesPanel } from './LinesPanel';
 import { SettingsPanel } from './SettingsPanel';
+import { SettlementPanel } from './SettlementPanel';
+import { SummaryPanel } from './SummaryPanel';
 import { TravelersSetup } from './TravelersSetup';
 import { useBudget } from './useBudget';
 
@@ -12,7 +18,16 @@ export function BudgetTab({ bundle, reload }: TripTabProps) {
   const online = useOnline();
   const budget = useBudget(bundle);
   const [setupError, setSetupError] = useState(false);
-  const { data, summary } = budget;
+  const [applyError, setApplyError] = useState<string | null>(null);
+  const { data, summary, items } = budget;
+
+  const advice = useMemo(
+    () =>
+      data && summary
+        ? computeAdvice({ summary, items, lines: data.lines, settings: settingsOf(bundle.trip), travelers: data.travelers.length, days: tripDays(bundle.trip) })
+        : [],
+    [data, summary, items, bundle.trip],
+  );
 
   if (budget.loading && !data) return <p className="muted">Chargement…</p>;
   if (budget.error || !data || !summary) return <p role="alert" className="save-error">Impossible de charger le budget.</p>;
@@ -37,17 +52,25 @@ export function BudgetTab({ bundle, reload }: TripTabProps) {
     );
   }
 
+  const labelOf = (key: string) => items.find((i) => i.key === key)?.label ?? key;
+
+  async function apply(a: Advice) {
+    setApplyError(null);
+    try {
+      await budget.service.applyAdvice(bundle.trip.id, a);
+      await reload();
+      await budget.reload();
+    } catch {
+      setApplyError('Enregistrement impossible.');
+    }
+  }
+
   return (
-    <div>
-      <p data-testid="planned-total"><strong>Prévu : {formatEur(summary.plannedCents)}</strong></p>
-      <LinesPanel
-        tripId={bundle.trip.id}
-        data={data}
-        items={budget.items}
-        reservations={bundle.reservations}
-        disabled={!online}
-        onChange={budget.reload}
-      />
+    <div className="budget-sections">
+      <SummaryPanel summary={summary} travelers={data.travelers.length} labelOf={labelOf} />
+      <AdvicePanel advice={advice} lines={data.lines} onApply={apply} disabled={!online} />
+      {applyError && <SaveError error={applyError} onRetry={() => setApplyError(null)} />}
+      <LinesPanel tripId={bundle.trip.id} data={data} items={items} reservations={bundle.reservations} disabled={!online} onChange={budget.reload} />
       <ExpensesList
         tripId={bundle.trip.id}
         data={data}
@@ -56,6 +79,7 @@ export function BudgetTab({ bundle, reload }: TripTabProps) {
         disabled={!online}
         onChange={budget.reload}
       />
+      <SettlementPanel data={data} />
       <SettingsPanel
         trip={bundle.trip}
         data={data}
