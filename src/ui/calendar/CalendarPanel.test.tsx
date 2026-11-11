@@ -19,6 +19,16 @@ describe('CalendarPanel', () => {
     expect(spy).toHaveBeenCalledWith('Japon.ics', expect.stringMatching(/^BEGIN:VCALENDAR/));
   });
 
+  it('prévient quand le voyage n’a rien à exporter et bloque le téléchargement', async () => {
+    const b = sampleBundle();
+    const empty = { ...b, reservations: [], checklist: [], stops: b.stops.map((s) => ({ ...s, startTime: null })) };
+    render(<TestAppProvider repo={createMemoryRepository()}><CalendarPanel bundle={empty} /></TestAppProvider>);
+    const u = userEvent.setup();
+    await u.click(screen.getByRole('button', { name: 'Calendrier' }));
+    expect(screen.getByText(/Rien à exporter pour l’instant/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Télécharger (.ics)' })).toBeDisabled();
+  });
+
   it('avertit et demande confirmation pour un abonnement actif', async () => {
     const repo = createMemoryRepository();
     const b = sampleBundle();

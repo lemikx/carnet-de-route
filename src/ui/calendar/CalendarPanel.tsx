@@ -29,6 +29,7 @@ export function CalendarPanel({ bundle }: { bundle: TripBundle }) {
   const effective = current ? { includeLegs: current.includeLegs, includeChecklist: current.includeChecklist } : opts;
   const disabled = !online || action.saving;
   const canSubscribe = mode === 'supabase' && Boolean(supabaseUrl);
+  const eventCount = (buildCalendar(bundle, effective).match(/BEGIN:VEVENT/g) ?? []).length;
 
   function setOption(k: keyof CalendarOptions, v: boolean) {
     const next = { ...effective, [k]: v };
@@ -59,8 +60,13 @@ export function CalendarPanel({ bundle }: { bundle: TripBundle }) {
               Inclure les échéances de la checklist
             </label>
 
+            {eventCount === 0 && (
+              <p className="alert" role="status">
+                Rien à exporter pour l’instant : ajoute une heure à une étape, une réservation (vol, hôtel…) ou une échéance à la checklist.
+              </p>
+            )}
             <h3>Fichier à importer</h3>
-            <button type="button" className="btn" onClick={() => download.downloadIcs(download.icsFilename(bundle.trip.name), buildCalendar(bundle, effective))}>
+            <button type="button" className="btn" disabled={eventCount === 0} onClick={() => download.downloadIcs(download.icsFilename(bundle.trip.name), buildCalendar(bundle, effective))}>
               Télécharger (.ics)
             </button>
             <p className="muted">Si tu modifies le voyage, réimporte le fichier ou utilise plutôt l’abonnement.</p>
