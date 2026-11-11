@@ -35,7 +35,12 @@ jobs:
           fi
           ls -d /usr/lib/postgresql/*/bin
       - run: npm run test:db
-      - run: npx playwright install --with-deps chromium
+      - name: Navigateur pour les tests (sans apt : les bibliothèques système sont déjà sur le serveur)
+        run: |
+          for i in 1 2 3; do
+            npx playwright install chromium && break
+            echo "Essai $i échoué, nouvel essai dans 20 s"; sleep 20
+          done
       - run: npm run test:e2e
       - run: npm run build
         env:
