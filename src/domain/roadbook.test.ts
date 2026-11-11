@@ -49,3 +49,14 @@ describe('stripSensitive', () => {
     expect(b.reservations[0].confirmationNumber).toBe('SECRET-conf');
   });
 });
+
+describe('budget absent du roadbook', () => {
+  it('retire les champs budget du voyage, partagé ou non', () => {
+    const b = sampleBundle();
+    b.trip = { ...b.trip, budgetCap: 3000, budgetCapMode: 'total', fxMarginPct: 7 };
+    for (const hideSensitive of [true, false]) {
+      expect(JSON.stringify(buildRoadbook(b, { hideSensitive }))).not.toMatch(/budgetCap|fxMargin/);
+    }
+    expect(JSON.stringify(stripSensitive(b))).not.toMatch(/budgetCap|fxMargin/);
+  });
+});

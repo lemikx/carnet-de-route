@@ -56,6 +56,13 @@ export interface BudgetSettings {
 
 export const DEFAULT_FX_MARGIN_PCT = 3;
 
+/** Retire du voyage les champs budget (partage, calendrier et roadbook ne doivent jamais les contenir). */
+export function omitBudget<T extends Trip>(trip: T): T {
+  const { budgetCap: _a, budgetCapMode: _b, fxMarginPct: _c, ...rest } = trip;
+  void _a; void _b; void _c;
+  return rest as T;
+}
+
 export function settingsOf(trip: Pick<Trip, 'budgetCap' | 'budgetCapMode' | 'fxMarginPct'>): BudgetSettings {
   return {
     cap: trip.budgetCap ?? null,

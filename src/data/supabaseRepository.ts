@@ -4,6 +4,9 @@ import { fromRow, rowsToBundle, toRow } from './supabaseMapping';
 import { NotFoundError, type CalendarLink, type TripRepository } from './TripRepository';
 
 type Row = Record<string, unknown>;
+const notYet = (): never => {
+  throw new Error('Budget Supabase : pas encore implémenté');
+};
 
 function check<T>(res: { data: T; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
@@ -100,6 +103,9 @@ export function createSupabaseRepository(client: SupabaseClient): TripRepository
     async revokeCalendarLink(tripId) {
       check(await client.from('calendar_links').update({ active: false, revoked_at: new Date().toISOString() }).eq('trip_id', tripId).eq('active', true));
     },
+    // Budget : implémentation Supabase à la tâche 6.
+    getBudget: notYet, saveTraveler: notYet, deleteTraveler: notYet, saveBudgetLine: notYet,
+    deleteBudgetLine: notYet, saveExpense: notYet, deleteExpense: notYet, updateBudgetSettings: notYet,
     async getDisplayName() {
       const r = check(await client.from('profiles').select('display_name').maybeSingle()) as Row | null;
       return String(r?.display_name ?? '');

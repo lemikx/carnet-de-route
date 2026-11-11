@@ -1,4 +1,5 @@
 import type { CalendarOptions } from '../domain/calendar';
+import type { BudgetData, BudgetLine, BudgetSettings, Expense, Traveler } from '../domain/budget/types';
 import type {
   ChecklistItem, Contact, Day, Leg, Reservation, ShareLink, Stop, Trip, TripBundle,
 } from '../domain/types';
@@ -18,6 +19,15 @@ export class NotFoundError extends Error {
 }
 
 export type New<T> = Omit<T, 'id'>;
+
+export type BudgetErrorCode = 'TRAVELER_IN_USE' | 'LAST_TRAVELER' | 'NO_PARTICIPANT' | 'BOTH_LINKS';
+
+export class BudgetError extends Error {
+  constructor(public code: BudgetErrorCode, message?: string) {
+    super(message ?? code);
+    this.name = 'BudgetError';
+  }
+}
 
 export interface SharedRoadbookData {
   bundle: TripBundle;
@@ -66,6 +76,15 @@ export interface TripRepository {
   /** Nom affiché sur les roadbooks partagés (jamais l'adresse e-mail). */
   getDisplayName(): Promise<string>;
   setDisplayName(name: string): Promise<void>;
+  // Budget (étape 2) : volontairement hors de TripBundle pour ne pas fuiter par le partage ni le calendrier.
+  getBudget(tripId: string): Promise<BudgetData>;
+  saveTraveler(t: Traveler | New<Traveler>): Promise<Traveler>;
+  deleteTraveler(id: string): Promise<void>; // BudgetError TRAVELER_IN_USE / LAST_TRAVELER
+  saveBudgetLine(l: BudgetLine | New<BudgetLine>): Promise<BudgetLine>;
+  deleteBudgetLine(id: string): Promise<void>; // les dépenses rattachées passent hors prévu
+  saveExpense(e: Expense | New<Expense>): Promise<Expense>; // BudgetError NO_PARTICIPANT / BOTH_LINKS
+  deleteExpense(id: string): Promise<void>;
+  updateBudgetSettings(tripId: string, s: BudgetSettings): Promise<Trip>;
 }
 
 export const DEFAULT_OWNER_NAME = 'Voyageur';
