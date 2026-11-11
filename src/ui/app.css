@@ -191,10 +191,11 @@ th { color: var(--muted); font-weight: 600; }
   body { background: #fff; font-size: 11pt; }
   .no-print, .app-header, .offline-banner, .leaflet-control-container { display: none !important; }
   .page { padding: 0; max-width: none; }
-  .roadbook { gap: 0; }
-  .roadbook section { border: none; padding: 0; border-radius: 0; }
-  .rb-overview, .rb-day, .rb-annex { break-before: page; }
-  .rb-stop, .rb-lodging, .rb-list li { break-inside: avoid; }
+  /* Safari ignore les sauts de page dans un conteneur flex : on repasse en bloc à l'impression. */
+  .roadbook { display: block; }
+  .roadbook section { border: none; padding: 0; border-radius: 0; margin: 0; }
+  .rb-overview, .rb-day, .rb-annex { break-before: page; page-break-before: always; }
+  .rb-stop, .rb-lodging, .rb-list li { break-inside: avoid; page-break-inside: avoid; }
   .map { height: 220px !important; break-inside: avoid; }
   .rb-cover .map { height: 360px !important; }
   a { color: inherit; text-decoration: none; }
