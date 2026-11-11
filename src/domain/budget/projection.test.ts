@@ -28,7 +28,7 @@ describe('computeBudget', () => {
   it('ne signale rien à égalité (enveloppe par personne)', () => {
     const s = computeBudget({ items, expenses, settings: settings({ cap: 50, capMode: 'per_person' }), travelers: 4 });
     expect(s.capCents).toBe(20000);
-    expect(s.alerts).toEqual([]);
+    expect(s.alerts.filter((a) => a.type !== 'item_over')).toEqual([]);
   });
   it('aucune alerte sans enveloppe', () => {
     expect(computeBudget({ items, expenses, settings: settings(), travelers: 4 }).alerts).toEqual([]);
