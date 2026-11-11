@@ -88,7 +88,7 @@ export function LineForm({
     onSave({
       ...(initial ? { id: initial.id } : {}),
       tripId, category, label: label.trim() || CATEGORY_LABELS[category], amount: value, currency, mode,
-      position: initial?.position ?? position, rateToEur: r, rateManual: currency === 'EUR' ? false : manual, rateDate: manual ? (initial?.rateDate ?? today()) : today(),
+      position: initial?.position ?? position, rateToEur: r, rateManual: currency === 'EUR' ? false : manual, rateDate: initial && r === initial.rateToEur ? initial.rateDate : today(),
     });
   }
 

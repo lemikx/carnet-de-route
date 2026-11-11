@@ -2,17 +2,24 @@ import { useState, type FormEvent } from 'react';
 
 const MAX = 20;
 
-export function TravelersSetup({ disabled, onCreate }: { disabled: boolean; onCreate(names: string[]): void }) {
+export function TravelersSetup({ disabled, onCreate }: { disabled: boolean; onCreate(names: string[]): void | Promise<void> }) {
   const [count, setCount] = useState(2);
   const [names, setNames] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     const filled = Array.from({ length: count }, (_, i) => (names[i] ?? '').trim()).filter(Boolean);
     if (filled.length === 0) return setError('Indique au moins un voyageur.');
     setError(null);
-    onCreate(filled);
+    setBusy(true);
+    try {
+      await onCreate(filled);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -31,7 +38,7 @@ export function TravelersSetup({ disabled, onCreate }: { disabled: boolean; onCr
       ))}
       {error && <p role="alert" className="field-error">{error}</p>}
       <div className="form-actions">
-        <button className="btn btn-primary" disabled={disabled}>Commencer</button>
+        <button className="btn btn-primary" disabled={disabled || busy}>Commencer</button>
       </div>
     </form>
   );

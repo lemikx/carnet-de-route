@@ -4,6 +4,7 @@ import { tripDays } from '../../domain/budget/planned';
 import { settingsOf } from '../../domain/budget/types';
 import { useOnline } from '../../offline/useOnline';
 import { SaveError } from '../common/SaveError';
+import { useSave } from '../common/useSave';
 import type { TripTabProps } from '../trip/types';
 import { AdvicePanel } from './AdvicePanel';
 import { ExpensesList } from './ExpensesList';
@@ -18,7 +19,12 @@ export function BudgetTab({ bundle, reload }: TripTabProps) {
   const online = useOnline();
   const budget = useBudget(bundle);
   const [setupError, setSetupError] = useState(false);
-  const [applyError, setApplyError] = useState<string | null>(null);
+  const applying = useSave(async (a: Advice) => {
+    await budget.service.applyAdvice(bundle.trip.id, a);
+    await reload();
+    await budget.reload();
+    return true;
+  });
   const { data, summary, items } = budget;
 
   const advice = useMemo(
@@ -40,7 +46,7 @@ export function BudgetTab({ bundle, reload }: TripTabProps) {
           onCreate={async (names) => {
             setSetupError(false);
             try {
-              for (const name of names) await budget.service.ensureTraveler(bundle.trip.id, name);
+              await budget.service.ensureTravelers(bundle.trip.id, names);
               await budget.reload();
             } catch {
               setSetupError(true);
@@ -54,22 +60,11 @@ export function BudgetTab({ bundle, reload }: TripTabProps) {
 
   const labelOf = (key: string) => items.find((i) => i.key === key)?.label ?? key;
 
-  async function apply(a: Advice) {
-    setApplyError(null);
-    try {
-      await budget.service.applyAdvice(bundle.trip.id, a);
-      await reload();
-      await budget.reload();
-    } catch {
-      setApplyError('Enregistrement impossible.');
-    }
-  }
-
   return (
     <div className="budget-sections">
       <SummaryPanel summary={summary} travelers={data.travelers.length} labelOf={labelOf} />
-      <AdvicePanel advice={advice} lines={data.lines} onApply={apply} disabled={!online} />
-      {applyError && <SaveError error={applyError} onRetry={() => setApplyError(null)} />}
+      <AdvicePanel advice={advice} lines={data.lines} onApply={(a) => void applying.run(a)} disabled={!online || applying.saving} />
+      <SaveError error={applying.error} onRetry={applying.retry} />
       <LinesPanel tripId={bundle.trip.id} data={data} items={items} reservations={bundle.reservations} disabled={!online} onChange={budget.reload} />
       <ExpensesList
         tripId={bundle.trip.id}

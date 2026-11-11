@@ -8,6 +8,8 @@ export type NewExpenseRate = { rateToEur: number; manual: false; stale?: boolean
 
 export interface BudgetService {
   ensureTraveler(tripId: string, name: string): Promise<Traveler>;
+  /** Crée les voyageurs qui n'existent pas encore (réessayer ne crée jamais de doublon). */
+  ensureTravelers(tripId: string, names: string[]): Promise<Traveler[]>;
   addUsualLines(tripId: string): Promise<BudgetLine[]>;
   /** Met à jour les lignes en devise étrangère, non manuelles, dont le taux n'est pas d'aujourd'hui ; renvoie celles qui ont changé. */
   refreshRates(tripId: string): Promise<BudgetLine[]>;
@@ -17,6 +19,9 @@ export interface BudgetService {
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+/** Position libre suivante (jamais deux voyageurs à la même place, même après une suppression). */
+export const nextPosition = (items: { position: number }[]) => items.reduce((m, i) => Math.max(m, i.position), -1) + 1;
 
 const USUAL_LINES = [
   { category: 'food', label: 'Repas', mode: 'per_person_per_day' },
@@ -29,7 +34,17 @@ export function createBudgetService(repo: TripRepository, fx: FxService): Budget
   return {
     async ensureTraveler(tripId, name) {
       const { travelers } = await repo.getBudget(tripId);
-      return repo.saveTraveler({ tripId, name: name.trim(), position: travelers.length });
+      return repo.saveTraveler({ tripId, name: name.trim(), position: nextPosition(travelers) });
+    },
+
+    async ensureTravelers(tripId, names) {
+      const out: Traveler[] = [];
+      for (const name of names.map((n) => n.trim()).filter(Boolean)) {
+        const { travelers } = await repo.getBudget(tripId);
+        const existing = travelers.find((t) => t.name === name);
+        out.push(existing ?? (await repo.saveTraveler({ tripId, name, position: nextPosition(travelers) })));
+      }
+      return out;
     },
 
     async addUsualLines(tripId) {
@@ -50,7 +65,8 @@ export function createBudgetService(repo: TripRepository, fx: FxService): Budget
         if (line.currency === 'EUR' || line.rateManual || line.rateDate >= today()) continue;
         try {
           const r = await fx.getRate(line.currency);
-          updated.push(await repo.saveBudgetLine({ ...line, rateToEur: r.rate, rateDate: r.date || today() }));
+          // On garde la date de VÉRIFICATION : la date publiée par le service est parfois celle de la veille.
+          updated.push(await repo.saveBudgetLine({ ...line, rateToEur: r.rate, rateDate: today() }));
         } catch {
           /* service injoignable : on garde le taux connu */
         }

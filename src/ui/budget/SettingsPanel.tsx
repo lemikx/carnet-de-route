@@ -4,6 +4,7 @@ import { parseAmount } from '../../domain/budget/money';
 import { settingsOf, type BudgetData, type CapMode, type Traveler } from '../../domain/budget/types';
 import type { Trip } from '../../domain/types';
 import { BudgetError } from '../../data/TripRepository';
+import { nextPosition } from '../../services/budgetService';
 
 const TRAVELER_ERRORS = {
   TRAVELER_IN_USE: 'Ce voyageur a des dépenses : réaffecte-les d’abord.',
@@ -103,7 +104,7 @@ export function SettingsPanel({ trip, data, disabled, onChanged }: { trip: Trip;
         </label>
         <div style={{ alignSelf: 'end', flex: '0 0 auto' }}>
           <button type="button" className="btn" disabled={disabled || !newName.trim()}
-            onClick={() => travelerAction(async () => { await repo.saveTraveler({ tripId: trip.id, name: newName.trim(), position: data.travelers.length }); setNewName(''); })}>
+            onClick={() => travelerAction(async () => { await repo.saveTraveler({ tripId: trip.id, name: newName.trim(), position: nextPosition(data.travelers) }); setNewName(''); })}>
             Ajouter
           </button>
         </div>

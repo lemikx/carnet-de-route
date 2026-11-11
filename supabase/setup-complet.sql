@@ -463,6 +463,20 @@ create table public.expense_shares (
   primary key (expense_id, traveler_id)
 );
 
+-- Modifier seulement le budget (enveloppe, marge) ne doit pas changer la date « mis à jour le » du roadbook partagé.
+create or replace function public.set_trip_updated_at() returns trigger language plpgsql as $$
+begin
+  if new.updated_at is distinct from old.updated_at then return new; end if; -- date posée explicitement (touch_trip)
+  if (to_jsonb(new) - 'updated_at' - 'budget_cap' - 'budget_cap_mode' - 'fx_margin_pct')
+     = (to_jsonb(old) - 'updated_at' - 'budget_cap' - 'budget_cap_mode' - 'fx_margin_pct') then
+    return new; -- seul le budget a changé
+  end if;
+  new.updated_at := now();
+  return new;
+end $$;
+drop trigger set_updated_at on public.trips;
+create trigger set_updated_at before update on public.trips for each row execute function public.set_trip_updated_at();
+
 -- Un voyageur payeur ou concerné par une dépense ne peut pas être supprimé tant que son voyage existe.
 -- (Quand le voyage lui-même est supprimé, il a déjà disparu au moment du déclenchement : tout part en cascade.)
 create or replace function public.prevent_used_traveler_delete() returns trigger language plpgsql set search_path = public as $$
@@ -519,8 +533,10 @@ create policy owner_all on public.expense_shares for all to authenticated
   using (user_id = auth.uid())
   with check (
     user_id = auth.uid()
-    and exists (select 1 from public.expenses e where e.id = expense_id and e.user_id = auth.uid())
-    and exists (select 1 from public.travelers v where v.id = traveler_id and v.user_id = auth.uid())
+    and exists (
+      select 1 from public.expenses e join public.travelers v on v.trip_id = e.trip_id
+      where e.id = expense_id and e.user_id = auth.uid() and v.id = traveler_id and v.user_id = auth.uid()
+    )
   );
 
 -- Le partage et le calendrier reprennent trip_bundle_json : on y retire les champs budget du voyage.
@@ -544,8 +560,8 @@ language plpgsql stable security invoker set search_path = public as $$
 begin
   if not exists (select 1 from public.trips where id = p_trip) then return null; end if;
   return jsonb_build_object(
-    'travelers', coalesce((select jsonb_agg(to_jsonb(v) order by v.position) from public.travelers v where v.trip_id = p_trip), '[]'),
-    'lines', coalesce((select jsonb_agg(to_jsonb(l) order by l.position) from public.budget_lines l where l.trip_id = p_trip), '[]'),
+    'travelers', coalesce((select jsonb_agg(to_jsonb(v) order by v.position, v.created_at) from public.travelers v where v.trip_id = p_trip), '[]'),
+    'lines', coalesce((select jsonb_agg(to_jsonb(l) order by l.position, l.created_at) from public.budget_lines l where l.trip_id = p_trip), '[]'),
     'expenses', coalesce((
       select jsonb_agg(
         to_jsonb(e) || jsonb_build_object('participant_ids', coalesce((select jsonb_agg(s.traveler_id) from public.expense_shares s where s.expense_id = e.id), '[]'::jsonb))

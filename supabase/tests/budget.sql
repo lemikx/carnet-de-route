@@ -86,6 +86,22 @@ set local request.jwt.claim.sub = '00000000-0000-0000-0000-00000000000a';
 delete from budget_lines where id = '60000000-0000-0000-0000-000000000001';
 select pg_temp.ok((select count(*) from expenses where line_id is null) = 1, 'la dépense reste quand sa ligne est supprimée');
 
+-- Modifier seulement le budget ne change pas la date « mis à jour le » du partage ; modifier le voyage oui.
+update trips set updated_at = '2020-01-01' where id = '10000000-0000-0000-0000-000000000001';
+update trips set budget_cap = 3500, fx_margin_pct = 4 where id = '10000000-0000-0000-0000-000000000001';
+select pg_temp.ok((select updated_at from trips where id = '10000000-0000-0000-0000-000000000001') = '2020-01-01', 'modifier le budget ne change pas la date de mise à jour');
+update trips set name = 'Japon 2026' where id = '10000000-0000-0000-0000-000000000001';
+select pg_temp.ok((select updated_at from trips where id = '10000000-0000-0000-0000-000000000001') > '2020-01-01', 'modifier le voyage met la date à jour');
+
+-- Une dépense ne peut concerner que des voyageurs de son propre voyage.
+insert into trips (id, name, start_date, end_date) values ('10000000-0000-0000-0000-000000000002', 'Autre', '2027-01-01', '2027-01-03');
+insert into travelers (id, trip_id, name, position) values ('50000000-0000-0000-0000-000000000099', '10000000-0000-0000-0000-000000000002', 'Étranger', 0);
+do $$ begin
+  perform save_expense('{"trip_id":"10000000-0000-0000-0000-000000000001","date":"2026-12-01","category":"food","label":"x","amount":1,"currency":"EUR","rate_to_eur":1,"paid_by":"50000000-0000-0000-0000-000000000002"}'::jsonb, array['50000000-0000-0000-0000-000000000099']::uuid[]);
+  raise exception 'ÉCHEC : un voyageur d''un autre voyage a été accepté';
+exception when insufficient_privilege then raise notice 'ok : un voyageur d''un autre voyage est refusé';
+end $$;
+
 -- Un budget de 300 dépenses se charge en un appel.
 insert into expenses (trip_id, date, category, label, amount, currency, rate_to_eur, paid_by)
   select '10000000-0000-0000-0000-000000000001', '2026-12-02', 'food', 'Repas ' || g, 10, 'EUR', 1, '50000000-0000-0000-0000-000000000001' from generate_series(1, 300) g;
@@ -95,5 +111,5 @@ select pg_temp.ok(jsonb_array_length(get_my_budget('10000000-0000-0000-0000-0000
 
 -- Supprimer le voyage supprime tout le budget.
 delete from trips where id = '10000000-0000-0000-0000-000000000001';
-select pg_temp.ok((select count(*) from travelers) + (select count(*) from expenses) + (select count(*) from budget_lines) = 0, 'le budget disparaît avec le voyage');
+select pg_temp.ok((select count(*) from travelers where trip_id = '10000000-0000-0000-0000-000000000001') + (select count(*) from expenses) + (select count(*) from budget_lines) = 0, 'le budget disparaît avec le voyage');
 rollback;

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { TestAppProvider } from '../../app/AppContext';
@@ -106,5 +106,52 @@ describe('BudgetTab — recalcul automatique', () => {
     await user.type(await screen.findByLabelText('Nouveau voyageur'), 'Dan');
     await user.click(screen.getByRole('button', { name: 'Ajouter' }));
     await waitFor(() => expect(screen.getByTestId('planned-total')).toHaveTextContent(/600,00/));
+  });
+});
+
+describe('BudgetTab — premier démarrage et conseils', () => {
+  it('désactive « Commencer » pendant l’enregistrement et ne crée pas de doublons', async () => {
+    const { repo, trip, user } = await setup();
+    const original = repo.saveTraveler.bind(repo);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    repo.saveTraveler = async (t) => {
+      await gate;
+      return original(t);
+    };
+    await user.type(await screen.findByLabelText('Prénom 1'), 'Alice');
+    const button = screen.getByRole('button', { name: 'Commencer' });
+    await user.click(button);
+    expect(button).toBeDisabled();
+    await user.click(button);
+    release();
+    await screen.findByText('Enveloppe maximale');
+    expect((await repo.getBudget(trip.id)).travelers).toHaveLength(1);
+  });
+
+  it('réessaie vraiment un conseil dont l’application a échoué', async () => {
+    const { repo, trip, user } = await setup({ travelers: ['Alice', 'Bob'] });
+    await repo.saveBudgetLine({ tripId: trip.id, category: 'food', label: 'Repas', amount: 40, currency: 'EUR', mode: 'per_person_per_day', position: 0, rateToEur: 1, rateManual: false, rateDate: new Date().toISOString().slice(0, 10) });
+    await repo.updateBudgetSettings(trip.id, { cap: 300, capMode: 'total', fxMarginPct: 3 });
+    cleanup();
+    const real = repo.saveBudgetLine.bind(repo);
+    let fail = true;
+    repo.saveBudgetLine = async (l) => {
+      if (fail) {
+        fail = false;
+        throw new Error('réseau');
+      }
+      return real(l);
+    };
+    function Harness({ initial }: { initial: TripBundle }) {
+      const [bundle, setBundle] = useState(initial);
+      return <BudgetTab bundle={bundle} setBundle={setBundle} reload={async () => setBundle(await repo.getBundle(trip.id))} />;
+    }
+    render(<TestAppProvider repo={repo}><Harness initial={await repo.getBundle(trip.id)} /></TestAppProvider>);
+    await user.click((await screen.findAllByRole('button', { name: 'Appliquer' }))[0]);
+    expect(await screen.findByText('Enregistrement impossible.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Réessayer' }));
+    await waitFor(async () => expect((await repo.getBudget(trip.id)).lines[0].amount).toBeLessThan(40));
+    await waitFor(() => expect(screen.queryByText('Enregistrement impossible.')).toBeNull());
   });
 });

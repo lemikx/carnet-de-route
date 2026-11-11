@@ -14,7 +14,7 @@ async function setup(reservations: Reservation[] = [], seedLine = false) {
   const trip = await repo.createTrip({ name: 'Japon', countries: [], startDate: '2026-12-01', endDate: '2026-12-05', localCurrency: 'JPY', homeTimezone: 'Europe/Paris', updatedAt: '' });
   for (const [i, n] of ['A', 'B', 'C', 'D'].entries()) await repo.saveTraveler({ tripId: trip.id, name: n, position: i });
   if (seedLine) {
-    await repo.saveBudgetLine({ tripId: trip.id, category: 'food', label: 'Ramen', amount: 1000, currency: 'JPY', mode: 'fixed', position: 0, rateToEur: 0.005, rateManual: true, rateDate: '2026-11-11' });
+    await repo.saveBudgetLine({ tripId: trip.id, category: 'food', label: 'Ramen', amount: 1000, currency: 'JPY', mode: 'fixed', position: 0, rateToEur: 0.005, rateManual: false, rateDate: '2026-01-01' });
   }
   function Harness() {
     const { repo: r } = useApp();
@@ -112,5 +112,17 @@ describe('LinesPanel — taux de change sûrs', () => {
     await waitFor(() => expect(screen.getByLabelText(/^Taux/)).toHaveValue('0.92'));
     await user.selectOptions(screen.getByLabelText('Devise'), 'JPY');
     await waitFor(() => expect(screen.getByLabelText(/^Taux/)).toHaveValue('0.005'));
+  });
+});
+
+describe('LinesPanel — date du taux', () => {
+  it('ne change pas la date du taux quand on modifie une ligne sans toucher au taux', async () => {
+    const { repo, trip, user } = await setup([], true);
+    await user.click(await screen.findByRole('button', { name: 'Modifier' }));
+    await user.clear(screen.getByLabelText('Libellé'));
+    await user.type(screen.getByLabelText('Libellé'), 'Ramen deluxe');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    await waitFor(async () => expect((await repo.getBudget(trip.id)).lines[0].label).toBe('Ramen deluxe'));
+    expect((await repo.getBudget(trip.id)).lines[0].rateDate).toBe('2026-01-01');
   });
 });

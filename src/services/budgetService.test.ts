@@ -126,3 +126,32 @@ describe('BudgetService', () => {
     });
   });
 });
+
+describe('BudgetService — voyageurs', () => {
+  it('attribue des positions uniques même après la suppression d’un voyageur du milieu', async () => {
+    const { service, repo, trip } = await setup();
+    const [a, b, c] = [await service.ensureTraveler(trip.id, 'A'), await service.ensureTraveler(trip.id, 'B'), await service.ensureTraveler(trip.id, 'C')];
+    void a; void c;
+    await repo.deleteTraveler(b.id);
+    await service.ensureTraveler(trip.id, 'D');
+    const positions = (await repo.getBudget(trip.id)).travelers.map((t) => t.position);
+    expect(new Set(positions).size).toBe(positions.length);
+    expect((await repo.getBudget(trip.id)).travelers.map((t) => t.name)).toEqual(['A', 'C', 'D']);
+  });
+
+  it('crée seulement les voyageurs manquants quand on réessaie', async () => {
+    const { service, repo, trip } = await setup();
+    await service.ensureTravelers(trip.id, ['Alice', 'Bob']);
+    await service.ensureTravelers(trip.id, ['Alice', 'Bob', 'Chloé']);
+    expect((await repo.getBudget(trip.id)).travelers.map((t) => t.name)).toEqual(['Alice', 'Bob', 'Chloé']);
+  });
+
+  it('ne rafraîchit pas deux fois de suite quand le service publie la date de la veille', async () => {
+    const yesterday = daysAgo(1);
+    const fx: FxService = { getRate: async (c) => ({ currency: c, rate: 0.0061, date: yesterday, stale: false }), listCurrencies: async () => ['EUR', 'JPY'] };
+    const { service, repo, trip } = await setup(fx);
+    await repo.saveBudgetLine({ tripId: trip.id, category: 'food', label: 'Repas', amount: 5000, currency: 'JPY', mode: 'fixed', position: 0, rateToEur: 0.005, rateManual: false, rateDate: daysAgo(3) });
+    expect(await service.refreshRates(trip.id)).toHaveLength(1);
+    expect(await service.refreshRates(trip.id)).toEqual([]);
+  });
+});
