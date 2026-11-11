@@ -1,0 +1,8 @@
+.superpowers/
+node_modules
+dist
+.env
+.env.local
+test-results
+playwright-report
+supabase/functions/_shared/domain/

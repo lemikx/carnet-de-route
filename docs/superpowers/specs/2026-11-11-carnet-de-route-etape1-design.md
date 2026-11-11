@@ -202,7 +202,7 @@ Une page de l'appli, et la même page mise en forme pour l'impression ou le PDF.
 - Option « Masquer les infos sensibles », **activée par défaut** : numéros de confirmation, prix, liens de réservation et notes personnelles sont retirés. Adresses, horaires, trajets et cartes restent visibles.
 - « Désactiver le lien » coupe l'accès immédiatement ; « Nouveau lien » remplace l'ancien.
 - Avertissement affiché à la création : « Toute personne qui a ce lien peut voir ton itinéraire, tes hébergements et tes dates. »
-- Côté famille, la page affiche en haut : « Roadbook partagé par … — mis à jour le … ».
+- Côté famille, la page affiche en haut : « Roadbook partagé par {nom affiché} — mis à jour le … ». Le nom affiché se choisit dans Réglages (ex. « lemikxfamily ») ; à défaut « Voyageur ». Jamais l'adresse e-mail ni aucun identifiant de compte.
 
 ### 5.9 Export calendrier
 Bouton « Calendrier » sur la page du voyage, avec deux choix.
@@ -288,3 +288,4 @@ Cette étape aura sa propre spec. Ce qui est déjà décidé :
   - en option, une **clé d'API** pour le mode automatique : Claude (payant à l'usage) ou un fournisseur avec offre gratuite (ex. Gemini), conditions à vérifier au moment de la construction ;
   - un **format de réponse unique** (JSON validé) quel que soit le moteur.
 - **Ordre** : étape 1, puis étape 2 (budget), puis étape 3.
+- **Questionnaire de référence** (commun aux deux modes ; en génération automatique seules les dates sont obligatoires) : destination (facultative en mode automatique) ; date de départ, durée en jours, ville de départ ; voyageurs adultes (+12 ans) et enfants (0–12 ans) ; budget par personne tout compris ; profil en choix multiples : type de voyageur, type de voyage recherché, envies et attentes, type d'hébergement préféré ; nationalité des voyageurs (française par défaut). Questions posées une par une, cases à cocher pour les choix multiples. Liste des choix à définir dans la spec de l'étape 3.
