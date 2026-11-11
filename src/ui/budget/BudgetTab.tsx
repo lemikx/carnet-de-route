@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { formatEur } from '../../domain/budget/money';
 import { useOnline } from '../../offline/useOnline';
 import type { TripTabProps } from '../trip/types';
+import { ExpensesList } from './ExpensesList';
 import { LinesPanel } from './LinesPanel';
 import { SettingsPanel } from './SettingsPanel';
 import { TravelersSetup } from './TravelersSetup';
@@ -44,6 +45,14 @@ export function BudgetTab({ bundle, reload }: TripTabProps) {
         data={data}
         items={budget.items}
         reservations={bundle.reservations}
+        disabled={!online}
+        onChange={budget.reload}
+      />
+      <ExpensesList
+        tripId={bundle.trip.id}
+        data={data}
+        reservations={bundle.reservations}
+        localCurrency={bundle.trip.localCurrency}
         disabled={!online}
         onChange={budget.reload}
       />
