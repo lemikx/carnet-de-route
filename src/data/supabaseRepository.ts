@@ -1,12 +1,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChecklistItem, Contact, Day, Leg, Reservation, ShareLink, Stop, Trip, TripBundle } from '../domain/types';
-import { fromRow, rowsToBundle, toRow } from './supabaseMapping';
-import { NotFoundError, type CalendarLink, type TripRepository } from './TripRepository';
+import type { BudgetLine, Expense, Traveler } from '../domain/budget/types';
+import { budgetFromJson, expenseToRpc, fromRow, rowsToBundle, toRow } from './supabaseMapping';
+import { BudgetError, NotFoundError, type CalendarLink, type TripRepository } from './TripRepository';
 
 type Row = Record<string, unknown>;
-const notYet = (): never => {
-  throw new Error('Budget Supabase : pas encore implémenté');
-};
+
+/** Traduit les erreurs de la base en erreurs métier du budget. */
+function budgetError(error: { message: string; code?: string }): Error {
+  if (error.message.includes('NO_PARTICIPANT')) return new BudgetError('NO_PARTICIPANT');
+  if (error.message.includes('BOTH_LINKS')) return new BudgetError('BOTH_LINKS');
+  if (error.message.includes('TRAVELER_IN_USE') || error.code === '23503') return new BudgetError('TRAVELER_IN_USE');
+  return new Error(error.message);
+}
 
 function check<T>(res: { data: T; error: { message: string } | null }): T {
   if (res.error) throw new Error(res.error.message);
@@ -103,9 +109,35 @@ export function createSupabaseRepository(client: SupabaseClient): TripRepository
     async revokeCalendarLink(tripId) {
       check(await client.from('calendar_links').update({ active: false, revoked_at: new Date().toISOString() }).eq('trip_id', tripId).eq('active', true));
     },
-    // Budget : implémentation Supabase à la tâche 6.
-    getBudget: notYet, saveTraveler: notYet, deleteTraveler: notYet, saveBudgetLine: notYet,
-    deleteBudgetLine: notYet, saveExpense: notYet, deleteExpense: notYet, updateBudgetSettings: notYet,
+    async getBudget(tripId) {
+      const json = check(await client.rpc('get_my_budget', { p_trip: tripId })) as Row | null;
+      if (!json) throw new NotFoundError('Voyage introuvable');
+      return budgetFromJson(json);
+    },
+    saveTraveler: (t) => save<Traveler>('travelers', t),
+    async deleteTraveler(id) {
+      const found = check(await client.from('travelers').select('trip_id').eq('id', id).maybeSingle()) as Row | null;
+      if (!found) return;
+      const { count } = check(await client.from('travelers').select('id', { count: 'exact', head: true }).eq('trip_id', found.trip_id as string)) as unknown as { count: number | null };
+      if ((count ?? 0) <= 1) throw new BudgetError('LAST_TRAVELER');
+      const res = await client.from('travelers').delete().eq('id', id);
+      if (res.error) throw budgetError(res.error);
+    },
+    saveBudgetLine: (l) => save<BudgetLine>('budget_lines', l),
+    deleteBudgetLine: (id) => remove('budget_lines', [id]),
+    async saveExpense(e) {
+      const { expense, participants } = expenseToRpc(e);
+      const res = await client.rpc('save_expense', { p_expense: expense, p_participants: participants });
+      if (res.error) throw budgetError(res.error);
+      return fromRow<Expense>(res.data as Row);
+    },
+    deleteExpense: (id) => remove('expenses', [id]),
+    async updateBudgetSettings(tripId, s) {
+      const r = check(
+        await client.from('trips').update({ budget_cap: s.cap, budget_cap_mode: s.capMode, fx_margin_pct: s.fxMarginPct }).eq('id', tripId).select().single(),
+      ) as Row;
+      return fromRow<Trip>(r);
+    },
     async getDisplayName() {
       const r = check(await client.from('profiles').select('display_name').maybeSingle()) as Row | null;
       return String(r?.display_name ?? '');

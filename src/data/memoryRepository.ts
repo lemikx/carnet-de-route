@@ -297,8 +297,8 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
     async deleteTraveler(id) {
       const t = store.travelers.find((x) => x.id === id);
       if (!t) return done(undefined);
-      if (store.expenses.some((e) => e.paidBy === id || e.participantIds.includes(id))) throw new BudgetError('TRAVELER_IN_USE');
       if (store.travelers.filter((x) => x.tripId === t.tripId).length <= 1) throw new BudgetError('LAST_TRAVELER');
+      if (store.expenses.some((e) => e.paidBy === id || e.participantIds.includes(id))) throw new BudgetError('TRAVELER_IN_USE');
       store.travelers = store.travelers.filter((x) => x.id !== id);
       return done(undefined);
     },
