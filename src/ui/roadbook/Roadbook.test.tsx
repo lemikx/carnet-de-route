@@ -25,4 +25,12 @@ describe('Roadbook', () => {
     render(<Roadbook roadbook={buildRoadbook(b, { hideSensitive: false })} />);
     expect(screen.getAllByRole('link', { name: 'Kinkaku-ji, Kyoto' })[0]).toHaveAttribute('href', expect.stringContaining('maps.apple.com'));
   });
+
+  it('n’affiche jamais un lien dangereux comme lien cliquable', () => {
+    const b = sampleBundle();
+    b.stops[0].url = 'javascript:alert(1)';
+    b.reservations[0].url = 'JavaScript:alert(2)';
+    const { container } = render(<Roadbook roadbook={buildRoadbook(b, { hideSensitive: false })} />);
+    expect(container.querySelector('a[href^="javascript" i]')).toBeNull();
+  });
 });

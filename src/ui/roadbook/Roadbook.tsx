@@ -4,6 +4,7 @@ import type { Roadbook as RoadbookData, RoadbookDay } from '../../domain/roadboo
 import { findLeg } from '../../domain/schedule';
 import type { Leg, Reservation } from '../../domain/types';
 import { appleMapsUrl } from '../map/appleMaps';
+import { safeHref } from '../common/safeHref';
 import { MapView } from '../map/MapView';
 import { CONTACT_LABELS, MODE_LABELS, RESERVATION_LABELS } from '../trip/labels';
 import { CHECKLIST_CATEGORIES } from '../../domain/checklist';
@@ -62,7 +63,7 @@ function Day({ d, onTilesLoaded }: { d: RoadbookDay; onTilesLoaded?(): void }) {
                       {s.durationMin ? <span className="muted"> · {formatDuration(s.durationMin)} sur place</span> : null}
                       <div className="muted"><Address text={s.address} /></div>
                       {s.phone && <div><a href={`tel:${s.phone}`}>{s.phone}</a></div>}
-                      {s.url && <div><a href={s.url} target="_blank" rel="noreferrer">{s.url}</a></div>}
+                      {s.url && <div>{safeHref(s.url) ? <a href={safeHref(s.url)!} target="_blank" rel="noreferrer">{s.url}</a> : s.url}</div>}
                       {s.note && <div>{s.note}</div>}
                       {t && t.conflictMinutes > 0 && t.estimatedArrival && (
                         <p className="alert">Arrivée estimée à {t.estimatedArrival.time}, après l’heure prévue ({s.startTime}).</p>
@@ -144,7 +145,7 @@ export function Roadbook({ roadbook, banner, onTilesLoaded }: { roadbook: Roadbo
                 {(r.fromPlace || r.toPlace) && <div className="muted">{[r.fromPlace?.address, r.toPlace?.address].filter(Boolean).join(' → ')}</div>}
                 {r.confirmationNumber && <div>N° <strong>{r.confirmationNumber}</strong></div>}
                 {r.phone && <div><a href={`tel:${r.phone}`}>{r.phone}</a></div>}
-                {r.url && <div><a href={r.url} target="_blank" rel="noreferrer">Voir la réservation</a></div>}
+                {safeHref(r.url) && <div><a href={safeHref(r.url)!} target="_blank" rel="noreferrer">Voir la réservation</a></div>}
                 {r.note && <div>{r.note}</div>}
               </li>
             ))}

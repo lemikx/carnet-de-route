@@ -6,6 +6,7 @@ import type { Reservation, TripBundle } from '../../domain/types';
 import { useOnline } from '../../offline/useOnline';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { CopyButton } from '../common/CopyButton';
+import { safeHref } from '../common/safeHref';
 import { SaveError } from '../common/SaveError';
 import { useSave } from '../common/useSave';
 import { RESERVATION_LABELS } from './labels';
@@ -75,7 +76,7 @@ export function ReservationsTab({ bundle, setBundle }: TripTabProps) {
               )}
               <p className="muted">
                 {r.price !== null && <span>{r.price.toLocaleString('fr-FR')} {r.currency} · </span>}
-                {r.phone && <a href={`tel:${r.phone}`}>{r.phone}</a>} {r.url && <a href={r.url} target="_blank" rel="noreferrer">Voir la réservation</a>}
+                {r.phone && <a href={`tel:${r.phone}`}>{r.phone}</a>} {safeHref(r.url) && <a href={safeHref(r.url)!} target="_blank" rel="noreferrer">Voir la réservation</a>}
               </p>
               {r.note && <p>{r.note}</p>}
               <div className="trip-actions" style={{ justifyContent: 'flex-end' }}>
