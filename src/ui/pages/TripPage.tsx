@@ -8,11 +8,13 @@ import { ContactsTab } from '../trip/ContactsTab';
 import { ItineraryTab } from '../trip/ItineraryTab';
 import { ReservationsTab } from '../trip/ReservationsTab';
 import { CalendarPanel } from '../calendar/CalendarPanel';
+import { BudgetTab } from '../budget/BudgetTab';
 
 const TABS = [
   { id: 'itineraire', label: 'Itinéraire', Component: ItineraryTab },
   { id: 'checklist', label: 'Checklist', Component: ChecklistTab },
   { id: 'reservations', label: 'Réservations', Component: ReservationsTab },
+  { id: 'budget', label: 'Budget', Component: BudgetTab },
   { id: 'contacts', label: 'Contacts', Component: ContactsTab },
 ] as const;
 
