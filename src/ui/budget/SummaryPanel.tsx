@@ -31,6 +31,11 @@ export function SummaryPanel({ summary, travelers, labelOf }: { summary: BudgetS
           <p className="muted">Enveloppe : {formatEur(capCents)}</p>
         </>
       )}
+      {summary.missingRateCount > 0 && (
+        <p role="status" className="alert alert-warning">
+          Projection incomplète : {summary.missingRateCount} {summary.missingRateCount > 1 ? 'réservations sans taux de change' : 'réservation sans taux de change'} (non comptée{summary.missingRateCount > 1 ? 's' : ''}).
+        </p>
+      )}
       {summary.alerts.map((a, i) => <AlertLine key={i} alert={a} labelOf={labelOf} />)}
     </section>
   );

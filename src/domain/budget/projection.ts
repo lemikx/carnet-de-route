@@ -23,6 +23,8 @@ export interface BudgetSummary {
   alerts: BudgetAlert[];
   items: ItemStatus[];
   unattachedCents: number;
+  /** Éléments prévus dont le taux de change est inconnu : ils ne sont pas comptés. */
+  missingRateCount: number;
   byCategory: Record<BudgetCategory, { plannedCents: number; actualCents: number }>;
 }
 
@@ -76,6 +78,6 @@ export function computeBudget(input: { items: PlannedItem[]; expenses: Expense[]
   return {
     plannedCents, projectionCents, actualCents, capCents,
     perPersonProjectionCents: travelers > 0 ? Math.round(projectionCents / travelers) : null,
-    alerts, items: statuses, unattachedCents, byCategory,
+    alerts, items: statuses, unattachedCents, byCategory, missingRateCount: items.filter((i) => i.missingRate).length,
   };
 }

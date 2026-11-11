@@ -4,7 +4,7 @@ import type { Reservation } from '../domain/types';
 import { FxError, type FxService } from '../fx/FxService';
 import type { TripRepository } from '../data/TripRepository';
 
-export type NewExpenseRate = { rateToEur: number; manual: false } | { error: 'UNAVAILABLE' | 'UNSUPPORTED' };
+export type NewExpenseRate = { rateToEur: number; manual: false; stale?: boolean; date?: string } | { error: 'UNAVAILABLE' | 'UNSUPPORTED' };
 
 export interface BudgetService {
   ensureTraveler(tripId: string, name: string): Promise<Traveler>;
@@ -76,7 +76,7 @@ export function createBudgetService(repo: TripRepository, fx: FxService): Budget
       try {
         // Une date à venir n'a pas encore de taux publié : on prend le dernier connu.
         const r = await fx.getRate(currency, date > today() ? undefined : date);
-        return { rateToEur: r.rate, manual: false };
+        return r.stale ? { rateToEur: r.rate, manual: false, stale: true, date: r.date } : { rateToEur: r.rate, manual: false };
       } catch (e) {
         return { error: e instanceof FxError && e.code === 'UNSUPPORTED' ? 'UNSUPPORTED' : 'UNAVAILABLE' };
       }

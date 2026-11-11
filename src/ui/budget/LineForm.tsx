@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useApp } from '../../app/AppContext';
 import { parseAmount } from '../../domain/budget/money';
 import { BUDGET_CATEGORIES, type BudgetCategory, type BudgetLine, type LineMode } from '../../domain/budget/types';
@@ -8,6 +8,7 @@ import { CATEGORY_LABELS, MODE_LABELS } from './labels';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const RATE_ERROR = 'Impossible d’obtenir le taux : saisis-le à la main.';
+const RATE_LOADING = 'Taux en cours de récupération, patiente un instant ou saisis-le à la main.';
 
 export function LineForm({
   tripId, initial, position, disabled, onSave, onCancel,
@@ -25,10 +26,14 @@ export function LineForm({
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '');
   const [currency, setCurrency] = useState(initial?.currency ?? 'EUR');
   const [mode, setMode] = useState<LineMode>(initial?.mode ?? 'fixed');
-  const [rate, setRate] = useState(initial ? String(initial.rateToEur) : '1');
+  const startCurrency = initial?.currency ?? 'EUR';
+  const [rate, setRate] = useState(initial ? String(initial.rateToEur) : startCurrency === 'EUR' ? '1' : '');
+  const [rateLoading, setRateLoading] = useState(false);
   const [manual, setManual] = useState(initial?.rateManual ?? false);
   const [currencies, setCurrencies] = useState<string[]>(FALLBACK_CURRENCIES);
   const [error, setError] = useState<string | null>(null);
+  const manualRef = useRef(manual);
+  manualRef.current = manual;
 
   useEffect(() => {
     fx.listCurrencies().then(setCurrencies, () => {});
@@ -38,18 +43,34 @@ export function LineForm({
   useEffect(() => {
     if (currency === 'EUR') {
       setRate('1');
+      setRateLoading(false);
       return;
     }
-    if (initial && initial.currency === currency) return;
+    if (initial && initial.currency === currency) {
+      // Retour à la devise d'origine : on restaure son taux enregistré.
+      setRate(String(initial.rateToEur));
+      setManual(initial.rateManual);
+      setRateLoading(false);
+      return;
+    }
+    if (manualRef.current) return;
+    setRate('');
+    setRateLoading(true);
     let cancelled = false;
     fx.getRate(currency).then(
       (r) => {
-        if (cancelled) return;
+        if (cancelled || manualRef.current) return;
+        setRateLoading(false);
         setRate(String(r.rate));
         setManual(false);
-        setError(null);
+        setError((e) => (e === RATE_ERROR || e === RATE_LOADING ? null : e));
       },
-      () => !cancelled && (setRate(''), setError(RATE_ERROR)),
+      () => {
+        if (cancelled || manualRef.current) return;
+        setRateLoading(false);
+        setRate('');
+        setError(RATE_ERROR);
+      },
     );
     return () => {
       cancelled = true;
@@ -62,7 +83,7 @@ export function LineForm({
     const value = parseAmount(amount);
     if (value === null) return setError('Montant invalide (2 décimales au plus).');
     const r = currency === 'EUR' ? 1 : Number(rate.replace(',', '.'));
-    if (!(r > 0)) return setError(RATE_ERROR);
+    if (!(r > 0)) return setError(rateLoading ? RATE_LOADING : RATE_ERROR);
     setError(null);
     onSave({
       ...(initial ? { id: initial.id } : {}),
@@ -92,7 +113,7 @@ export function LineForm({
         </label>
         <label>
           Devise
-          <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+          <select value={currency} onChange={(e) => { setCurrency(e.target.value); setManual(false); }}>
             {[...new Set(['EUR', ...currencies, currency])].sort().map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
@@ -106,7 +127,7 @@ export function LineForm({
       {currency !== 'EUR' && (
         <label>
           Taux (€ pour 1 {currency})
-          <input inputMode="decimal" value={rate} onChange={(e) => { setRate(e.target.value); setManual(true); }} />
+          <input inputMode="decimal" value={rate} onChange={(e) => { setRate(e.target.value); setManual(true); setRateLoading(false); }} />
         </label>
       )}
       {error && <p role="alert" className="field-error">{error}</p>}

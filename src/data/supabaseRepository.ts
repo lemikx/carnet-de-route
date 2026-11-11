@@ -7,10 +7,11 @@ import { BudgetError, NotFoundError, type CalendarLink, type TripRepository } fr
 type Row = Record<string, unknown>;
 
 /** Traduit les erreurs de la base en erreurs métier du budget. */
-function budgetError(error: { message: string; code?: string }): Error {
+function budgetError(error: { message: string; code?: string }, opts: { traveler?: boolean } = {}): Error {
   if (error.message.includes('NO_PARTICIPANT')) return new BudgetError('NO_PARTICIPANT');
   if (error.message.includes('BOTH_LINKS')) return new BudgetError('BOTH_LINKS');
-  if (error.message.includes('TRAVELER_IN_USE') || error.code === '23503') return new BudgetError('TRAVELER_IN_USE');
+  // Une violation de clé étrangère n'est un « voyageur utilisé » que lors de la suppression d'un voyageur.
+  if (error.message.includes('TRAVELER_IN_USE') || (opts.traveler && error.code === '23503')) return new BudgetError('TRAVELER_IN_USE');
   return new Error(error.message);
 }
 
@@ -118,10 +119,12 @@ export function createSupabaseRepository(client: SupabaseClient): TripRepository
     async deleteTraveler(id) {
       const found = check(await client.from('travelers').select('trip_id').eq('id', id).maybeSingle()) as Row | null;
       if (!found) return;
-      const { count } = check(await client.from('travelers').select('id', { count: 'exact', head: true }).eq('trip_id', found.trip_id as string)) as unknown as { count: number | null };
-      if ((count ?? 0) <= 1) throw new BudgetError('LAST_TRAVELER');
+      // `head: true` ne renvoie pas de données : le total est dans `count`.
+      const counted = await client.from('travelers').select('id', { count: 'exact', head: true }).eq('trip_id', found.trip_id as string);
+      if (counted.error) throw new Error(counted.error.message);
+      if ((counted.count ?? 0) <= 1) throw new BudgetError('LAST_TRAVELER');
       const res = await client.from('travelers').delete().eq('id', id);
-      if (res.error) throw budgetError(res.error);
+      if (res.error) throw budgetError(res.error, { traveler: true });
     },
     saveBudgetLine: (l) => save<BudgetLine>('budget_lines', l),
     deleteBudgetLine: (id) => remove('budget_lines', [id]),

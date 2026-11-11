@@ -62,3 +62,11 @@ describe('computeBudget', () => {
 describe('expenseCents', () => {
   it('convertit au taux figé', () => expect(expenseCents(expense(0, { amount: 10000, currency: 'JPY', rateToEur: 0.0061 }))).toBe(6100));
 });
+
+describe('taux manquants', () => {
+  it('compte les éléments sans taux pour prévenir que la projection est incomplète', () => {
+    const s = computeBudget({ items: [item('res:R1', 0, { source: 'reservation', missingRate: true }), item('L1', 100)], expenses: [], settings: settings(), travelers: 1 });
+    expect(s.missingRateCount).toBe(1);
+    expect(computeBudget({ items: [item('L1', 100)], expenses: [], settings: settings(), travelers: 1 }).missingRateCount).toBe(0);
+  });
+});

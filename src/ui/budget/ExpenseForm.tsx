@@ -3,12 +3,14 @@ import { useApp } from '../../app/AppContext';
 import { convertToEurCents, formatEur, parseAmount } from '../../domain/budget/money';
 import { BUDGET_CATEGORIES, type BudgetCategory, type BudgetData, type Expense } from '../../domain/budget/types';
 import type { Reservation } from '../../domain/types';
+import { formatDate } from '../../domain/format';
 import { FALLBACK_CURRENCIES } from '../../fx/frankfurterFx';
 import { createBudgetService } from '../../services/budgetService';
 import type { New } from '../../data/TripRepository';
 import { CATEGORY_LABELS } from './labels';
 
 const RATE_ERROR = 'Impossible d’obtenir le taux : saisis-le à la main.';
+const RATE_LOADING = 'Taux en cours de récupération, patiente un instant ou saisis-le à la main.';
 const localToday = () => new Date().toLocaleDateString('sv-SE');
 
 export function ExpenseForm({
@@ -30,13 +32,19 @@ export function ExpenseForm({
   const [label, setLabel] = useState(initial?.label ?? '');
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '');
   const [currency, setCurrency] = useState(initial?.currency ?? (localCurrency || 'EUR'));
-  const [rate, setRate] = useState(initial ? String(initial.rateToEur) : '1');
+  const startCurrency = initial?.currency ?? (localCurrency || 'EUR');
+  // Jamais « 1 » par défaut pour une devise étrangère : 1 000 yens ne valent pas 1 000 €.
+  const [rate, setRate] = useState(initial ? String(initial.rateToEur) : startCurrency === 'EUR' ? '1' : '');
+  const [rateLoading, setRateLoading] = useState(false);
+  const [staleDate, setStaleDate] = useState<string | null>(null);
   const [manual, setManual] = useState(initial?.rateManual ?? false);
   const [paidBy, setPaidBy] = useState(initial?.paidBy ?? data.travelers[0]?.id ?? '');
   const [participants, setParticipants] = useState<string[]>(initial?.participantIds ?? data.travelers.map((t) => t.id));
   const [link, setLink] = useState(initial?.lineId ? `line:${initial.lineId}` : initial?.reservationId ? `res:${initial.reservationId}` : '');
   const [currencies, setCurrencies] = useState<string[]>(FALLBACK_CURRENCIES);
   const [error, setError] = useState<string | null>(null);
+  const manualRef = useRef(manual);
+  manualRef.current = manual;
 
   useEffect(() => {
     fx.listCurrencies().then(setCurrencies, () => {});
@@ -44,21 +52,34 @@ export function ExpenseForm({
 
   // Taux du jour de la dépense, sauf s'il a été saisi à la main (ou s'il s'agit d'une dépense déjà enregistrée à la même date et devise).
   useEffect(() => {
+    setStaleDate(null);
     if (currency === 'EUR') {
       setRate('1');
       setManual(false);
+      setRateLoading(false);
       return;
     }
-    if (manual || (initial && initial.currency === currency && initial.date === date)) return;
+    if (initial && initial.currency === currency && initial.date === date) {
+      // Retour à la devise d'origine : on restaure son taux enregistré.
+      setRate(String(initial.rateToEur));
+      setManual(initial.rateManual);
+      setRateLoading(false);
+      return;
+    }
+    if (manualRef.current) return;
+    setRate('');
+    setRateLoading(true);
     let cancelled = false;
     service.newExpenseRate(currency, date).then((r) => {
-      if (cancelled) return;
+      if (cancelled || manualRef.current) return;
+      setRateLoading(false);
       if ('error' in r) {
         setRate('');
         setError(RATE_ERROR);
       } else {
         setRate(String(r.rateToEur));
-        setError((e) => (e === RATE_ERROR ? null : e));
+        if (r.stale && r.date) setStaleDate(r.date);
+        setError((e) => (e === RATE_ERROR || e === RATE_LOADING ? null : e));
       }
     });
     return () => {
@@ -75,7 +96,7 @@ export function ExpenseForm({
     e.preventDefault();
     if (value === null) return setError('Montant invalide (2 décimales au plus).');
     if (value <= 0) return setError('Le montant doit être supérieur à 0.');
-    if (!(rateNumber > 0)) return setError(RATE_ERROR);
+    if (!(rateNumber > 0)) return setError(rateLoading ? RATE_LOADING : RATE_ERROR);
     if (!paidBy) return setError('Choisis qui a payé.');
     if (participants.length === 0) return setError('Choisis au moins une personne concernée.');
     setError(null);
@@ -123,11 +144,12 @@ export function ExpenseForm({
         {currency !== 'EUR' && (
           <label>
             Taux (€ pour 1 {currency})
-            <input inputMode="decimal" value={rate} onChange={(e) => { setRate(e.target.value); setManual(true); }} />
+            <input inputMode="decimal" value={rate} onChange={(e) => { setRate(e.target.value); setManual(true); setRateLoading(false); }} />
           </label>
         )}
       </div>
       {preview && currency !== 'EUR' && <p className="muted">≈ {preview}</p>}
+      {staleDate && currency !== 'EUR' && <p className="muted">Dernier taux connu ({formatDate(staleDate)}) : le service de taux est injoignable.</p>}
       <div className="row">
         <label>
           Payé par

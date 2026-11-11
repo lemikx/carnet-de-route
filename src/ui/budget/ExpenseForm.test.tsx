@@ -92,3 +92,40 @@ describe('ExpenseForm', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ lineId: null, reservationId: 'R1' }));
   });
 });
+
+describe('ExpenseForm — taux de change sûrs', () => {
+  const never: FxService = { getRate: () => new Promise(() => {}), listCurrencies: async () => ['EUR', 'JPY'] };
+
+  it('ne propose jamais le taux 1 pour une devise étrangère et refuse d’enregistrer tant qu’il manque', async () => {
+    const { onSave, user } = setup(never);
+    expect(screen.getByLabelText(/^Taux/)).toHaveValue('');
+    await user.type(screen.getByLabelText('Montant'), '6000');
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(screen.getByText('Taux en cours de récupération, patiente un instant ou saisis-le à la main.')).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('ne garde pas le taux d’une autre devise quand on revient à la devise d’origine', async () => {
+    const onSave = vi.fn();
+    const initial = { id: 'e1', tripId: 't', date: '2026-12-01', category: 'food' as const, label: 'Ramen', amount: 6000, currency: 'JPY', rateToEur: 0.0061, rateManual: false, paidBy: 'a', participantIds: ['a', 'b'], lineId: null, reservationId: null };
+    render(
+      <TestAppProvider repo={createMemoryRepository()} fx={createFakeFx()}>
+        <ExpenseForm tripId="t" data={data} reservations={[]} localCurrency="JPY" initial={initial} disabled={false} onSave={onSave} onCancel={() => {}} />
+      </TestAppProvider>,
+    );
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText('Devise'), 'USD');
+    await waitFor(() => expect(screen.getByLabelText(/^Taux/)).toHaveValue('0.92'));
+    await user.selectOptions(screen.getByLabelText('Devise'), 'JPY');
+    await waitFor(() => expect(screen.getByLabelText(/^Taux/)).toHaveValue('0.0061'));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ currency: 'JPY', rateToEur: 0.0061 }));
+  });
+
+  it('propose le dernier taux connu en le signalant quand le service est injoignable', async () => {
+    const stale: FxService = { getRate: async (c) => ({ currency: c, rate: 0.006, date: '2026-11-10', stale: true }), listCurrencies: async () => ['EUR', 'JPY'] };
+    setup(stale);
+    await waitFor(() => expect(screen.getByLabelText(/^Taux/)).toHaveValue('0.006'));
+    expect(screen.getByText(/Dernier taux connu \(10\/11\/2026\)/)).toBeInTheDocument();
+  });
+});

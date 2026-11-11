@@ -65,3 +65,17 @@ describe('createFakeFx', () => {
     expect(await fx.listCurrencies()).toContain('USD');
   });
 });
+
+describe('repli sur le dernier taux connu', () => {
+  it('réutilise le taux « latest » pour une dépense à une autre date quand le service est injoignable', async () => {
+    const store = mapStore();
+    await createFrankfurterFx((() => json({ date: '2026-11-10', rates: { EUR: 0.0061 } })) as unknown as typeof fetch, store).getRate('JPY');
+    const down = createFrankfurterFx((() => Promise.reject(new TypeError('Failed to fetch'))) as unknown as typeof fetch, store);
+    expect(await down.getRate('JPY', '2026-12-01')).toMatchObject({ rate: 0.0061, stale: true, date: '2026-11-10' });
+  });
+  it('abandonne une requête qui ne répond pas', async () => {
+    const hang = ((_u: string, init?: RequestInit) => new Promise((_r, rej) => init?.signal?.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError'))))) as unknown as typeof fetch;
+    const fx = createFrankfurterFx(hang, mapStore(), 20);
+    await expect(fx.getRate('JPY')).rejects.toMatchObject({ code: 'UNAVAILABLE' });
+  });
+});

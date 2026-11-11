@@ -52,3 +52,11 @@ describe('SummaryPanel', () => {
     expect(screen.getByText(/Par personne/)).toHaveTextContent('—');
   });
 });
+
+describe('SummaryPanel — projection incomplète', () => {
+  it('prévient quand une réservation n’a pas de taux, même sans enveloppe', () => {
+    const s = computeBudget({ items: [{ ...item('res:R1', 0), source: 'reservation', missingRate: true }], expenses: [], settings: settings(null), travelers: 1 });
+    render(<SummaryPanel summary={s} travelers={1} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Projection incomplète : 1 réservation sans taux de change');
+  });
+});

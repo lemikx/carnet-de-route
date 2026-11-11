@@ -65,3 +65,17 @@ describe('createCachedRepository', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 });
+
+describe('budget hors ligne', () => {
+  it('relit le budget déjà consulté quand l’appareil est hors ligne', async () => {
+    let online = true;
+    const inner = createMemoryRepository();
+    const repo = createCachedRepository(inner, () => online, mapStore());
+    const t = await repo.createTrip(trip);
+    await repo.saveTraveler({ tripId: t.id, name: 'Alice', position: 0 });
+    const before = await repo.getBudget(t.id);
+    online = false;
+    expect(await repo.getBudget(t.id)).toEqual(before);
+    await expect(repo.saveTraveler({ tripId: t.id, name: 'Bob', position: 1 })).rejects.toBeInstanceOf(OfflineError);
+  });
+});

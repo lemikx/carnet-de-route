@@ -9,10 +9,13 @@ import type { Reservation } from '../../domain/types';
 import { makeReservation } from '../../test/factories';
 import { LinesPanel } from './LinesPanel';
 
-async function setup(reservations: Reservation[] = []) {
+async function setup(reservations: Reservation[] = [], seedLine = false) {
   const repo = createMemoryRepository();
   const trip = await repo.createTrip({ name: 'Japon', countries: [], startDate: '2026-12-01', endDate: '2026-12-05', localCurrency: 'JPY', homeTimezone: 'Europe/Paris', updatedAt: '' });
   for (const [i, n] of ['A', 'B', 'C', 'D'].entries()) await repo.saveTraveler({ tripId: trip.id, name: n, position: i });
+  if (seedLine) {
+    await repo.saveBudgetLine({ tripId: trip.id, category: 'food', label: 'Ramen', amount: 1000, currency: 'JPY', mode: 'fixed', position: 0, rateToEur: 0.005, rateManual: true, rateDate: '2026-11-11' });
+  }
   function Harness() {
     const { repo: r } = useApp();
     const [data, setData] = useState<BudgetData | null>(null);
@@ -98,5 +101,16 @@ describe('LinesPanel', () => {
     expect(within(vol).queryByRole('button', { name: 'Modifier' })).toBeNull();
     const visite = screen.getByText('Visite').closest('li')!;
     expect(within(visite).getByText('taux manquant')).toBeInTheDocument();
+  });
+});
+
+describe('LinesPanel — taux de change sûrs', () => {
+  it('revient au taux d’origine quand on repasse à la devise de la ligne', async () => {
+    const { user } = await setup([], true);
+    await user.click(await screen.findByRole('button', { name: 'Modifier' }));
+    await user.selectOptions(screen.getByLabelText('Devise'), 'USD');
+    await waitFor(() => expect(screen.getByLabelText(/^Taux/)).toHaveValue('0.92'));
+    await user.selectOptions(screen.getByLabelText('Devise'), 'JPY');
+    await waitFor(() => expect(screen.getByLabelText(/^Taux/)).toHaveValue('0.005'));
   });
 });
