@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../app/AppContext';
+import { describeAuthError } from '../../app/authError';
 
 export function LoginPage() {
   const { user, signIn } = useApp();
@@ -20,8 +21,8 @@ export function LoginPage() {
     try {
       await signIn(email.trim());
       setSent(email.trim());
-    } catch {
-      setError('Envoi impossible. Vérifie l’adresse et ta connexion, puis réessaie.');
+    } catch (e) {
+      setError(describeAuthError(e));
     } finally {
       setBusy(false);
     }
