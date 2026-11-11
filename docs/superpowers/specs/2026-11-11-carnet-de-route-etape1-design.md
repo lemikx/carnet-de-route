@@ -21,15 +21,17 @@ Le projet complet est découpé en 3 étapes ; ce document ne couvre que l'étap
 2. Les trajets en voiture, à pied et à vélo sont calculés automatiquement (durée, distance, tracé) ; les autres sont saisis ou repris d'une réservation.
 3. L'appli signale les conflits horaires et les journées trop chargées.
 4. Je consulte le roadbook dans l'appli et je l'exporte en PDF, lisible hors ligne sur l'iPhone.
+5. Je partage le roadbook avec ma famille par un lien en lecture seule (toujours à jour, sans compte, désactivable) ou en envoyant le PDF.
 
 ## 2. Ce qui a été décidé (et ce qui est supposé)
 
 **Décidé avec toi**
 - Appli web installable (PWA) plutôt qu'appli native Apple.
-- Un seul utilisateur, synchronisé entre Mac et iPhone.
+- Un seul utilisateur qui modifie, synchronisé entre Mac et iPhone ; d'autres personnes peuvent seulement consulter le roadbook partagé.
 - Hébergement sur GitHub Pages (compte existant), données sur Supabase (gratuit).
 - Trajets calculés automatiquement dès l'étape 1.
 - Roadbook consultable dans l'appli **et** exportable en PDF.
+- Partage du roadbook : envoi du PDF **et** lien secret en lecture seule, infos sensibles masquées par défaut.
 
 **Supposé par moi (à corriger si besoin)**
 - Interface en français uniquement.
@@ -55,6 +57,12 @@ iPhone / Mac (Safari, appli installée)
                          (adresses → coordonnées, calcul d'itinéraires)
 
   Cartes : tuiles OpenStreetMap affichées avec Leaflet
+
+  Famille (lien partagé, sans compte)
+        │
+        ▼
+  Appli web, page « roadbook partagé » ──► fonction Supabase get_shared_roadbook(jeton)
+                                            (renvoie uniquement le roadbook, filtré)
 ```
 
 ### Choix techniques
@@ -79,7 +87,8 @@ Chaque module a un rôle unique et se teste seul.
 - **`routing/`** : géocodage et calcul de trajets derrière une interface (`RoutingService`). Implémentations : Edge Function réelle, et une version factice pour les tests.
 - **`offline/`** : cache local des voyages déjà consultés et détection de l'état du réseau.
 - **`ui/`** : écrans et composants.
-- **`roadbook/`** : la page roadbook et sa mise en page d'impression.
+- **`roadbook/`** : la page roadbook et sa mise en page d'impression. Elle reçoit un contenu déjà construit, ce qui permet de l'utiliser aussi bien pour le propriétaire que pour un lien partagé.
+- **`sharing/`** : création, copie et désactivation des liens ; filtrage des infos sensibles.
 
 ## 4. Modèle de données
 
@@ -115,6 +124,10 @@ Toutes les tables ont `id`, `user_id`, `created_at`, `updated_at`. L'accès est 
 
 **contacts** (contacts utiles)
 - `trip_id`, `name`, `kind` : `embassy` | `emergency` | `lodging` | `other`, `phone`, `address`, `note`
+
+**share_links** (liens de partage)
+- `trip_id`, `token` (jeton aléatoire de 32 caractères, impossible à deviner), `hide_sensitive` (vrai par défaut), `active`, `revoked_at`
+- Un seul lien actif par voyage. « Nouveau lien » désactive l'ancien.
 
 ### Fuseaux horaires
 Chaque heure est enregistrée avec le fuseau horaire du lieu. Un vol Paris 10:00 → Tokyo 06:00 (+1) s'affiche correctement, et sa durée réelle est calculée. C'est indispensable pour un voyage à l'étranger.
@@ -165,7 +178,19 @@ Une page de l'appli, et la même page mise en forme pour l'impression ou le PDF.
 
 - Dans l'appli : liens cliquables (adresses → Plans, téléphones, liens de réservation).
 - Bouton « Exporter en PDF » : ouvre l'impression du navigateur avec une mise en page A4 (une journée par page) ; sur iPhone, Partager → Enregistrer dans Fichiers.
+- Bouton « Partager » : voir 5.8.
 - Le roadbook est enregistré dans le cache local et reste consultable hors ligne. Hors ligne, les cartes de la version web peuvent ne pas s'afficher (tuiles non mises en cache) ; le PDF, lui, contient les cartes telles qu'elles étaient à l'export. Pour un voyage, c'est donc le PDF qui fait référence hors ligne.
+
+### 5.8 Partage du roadbook
+**Envoyer le PDF** : après l'export, Partager → Messages, WhatsApp, e-mail… C'est une copie figée à la date de l'export.
+
+**Lien en lecture seule**
+- Dans le roadbook, « Partager » → « Créer un lien » ; le lien s'affiche avec les boutons « Copier » et « Partager » (feuille de partage iPhone/Mac).
+- La personne qui ouvre le lien voit **le roadbook à jour**, sans compte et sans possibilité de modifier. Elle peut aussi l'exporter en PDF.
+- Option « Masquer les infos sensibles », **activée par défaut** : numéros de confirmation, prix, liens de réservation et notes personnelles sont retirés. Adresses, horaires, trajets et cartes restent visibles.
+- « Désactiver le lien » coupe l'accès immédiatement ; « Nouveau lien » remplace l'ancien.
+- Avertissement affiché à la création : « Toute personne qui a ce lien peut voir ton itinéraire, tes hébergements et tes dates. »
+- Côté famille, la page affiche en haut : « Roadbook partagé par … — mis à jour le … ».
 
 ## 6. Gestion des erreurs
 
@@ -177,6 +202,7 @@ Une page de l'appli, et la même page mise en forme pour l'impression ou le PDF.
 | Trajet impossible (mer, pas de route) | Message sur le trajet, mode suggéré « ferry/avion », saisie manuelle possible. |
 | Limite gratuite OpenRouteService atteinte | Message « Calcul indisponible pour aujourd'hui », saisie manuelle possible ; les trajets déjà calculés restent. |
 | Session expirée | Demande d'un nouveau lien magique ; données intactes. |
+| Lien partagé désactivé ou inconnu | Page « Ce roadbook n'est plus partagé », sans aucune autre information. |
 | Erreur de sauvegarde | Message clair et bouton « Réessayer » ; la saisie reste dans le formulaire. |
 
 ## 7. Sécurité
@@ -184,12 +210,16 @@ Une page de l'appli, et la même page mise en forme pour l'impression ou le PDF.
 - RLS sur toutes les tables : un utilisateur n'accède qu'à ses propres lignes.
 - La clé publique Supabase (« anon ») est la seule présente dans l'appli, conformément à l'usage prévu.
 - La Edge Function n'accepte que les utilisateurs connectés.
+- **Partage** : les visiteurs sans compte n'ont **aucun accès direct aux tables**. Ils passent uniquement par la fonction `get_shared_roadbook(jeton)`, qui vérifie que le lien est actif, renvoie seulement le contenu du roadbook de ce voyage et retire les infos sensibles côté serveur quand l'option est activée. Le filtrage n'est donc jamais fait seulement dans le navigateur.
+- Le jeton est généré aléatoirement côté serveur (au moins 128 bits) ; la page partagée n'est pas indexée par les moteurs de recherche (`noindex`).
 
 ## 8. Tests
 
 - **Vitest (domain/)** : génération des jours, ajout/retrait de jours au changement de dates, conflits horaires (y compris changement de fuseau), seuil de journée chargée, cumul km/heures, tri des réservations, contenu du roadbook.
+- **Vitest (sharing/)** : en mode « masquer », aucun numéro de confirmation, prix, lien de réservation ni note n'apparaît dans le contenu partagé.
+- **Tests SQL de la fonction de partage** : jeton actif → contenu ; jeton désactivé ou inconnu → rien ; jamais les données d'un autre voyage.
 - **Vitest (data/, routing/)** : implémentations en mémoire et factices conformes aux interfaces ; traitement des erreurs OpenRouteService.
-- **Playwright** (avec les versions en mémoire/factices, sans dépendre d'Internet) : créer un voyage → ajouter des lieux → trajet calculé → conflit signalé → réservation reliée à l'itinéraire → roadbook affiché → mode hors ligne.
+- **Playwright** (avec les versions en mémoire/factices, sans dépendre d'Internet) : créer un voyage → ajouter des lieux → trajet calculé → conflit signalé → réservation reliée à l'itinéraire → roadbook affiché → lien partagé créé, ouvert sans connexion, puis désactivé → mode hors ligne.
 - **Test manuel par toi** : installation sur Mac et iPhone, synchronisation entre les deux, export PDF.
 
 ## 9. Mise en place (guidée pas à pas)
@@ -200,5 +230,5 @@ Une page de l'appli, et la même page mise en forme pour l'impression ou le PDF.
 ## 10. Hors périmètre de l'étape 1
 - Budget et devises (étape 2).
 - Proposition d'itinéraire par IA et recherche Reddit/YouTube (étape 3). Le modèle de données (days/stops/legs) est conçu pour que l'étape 3 puisse le remplir directement.
-- Partage avec d'autres personnes, pièces jointes, notifications, modification hors ligne, cartes hors ligne en dehors du roadbook en cache.
+- Modification à plusieurs (les autres ne font que consulter), pièces jointes, notifications, modification hors ligne, cartes hors ligne en dehors du roadbook en cache.
 - Calcul automatique des trajets en transports en commun (pas de service gratuit fiable).
