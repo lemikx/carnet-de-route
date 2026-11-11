@@ -13,7 +13,7 @@ Le projet complet est découpé en 3 étapes ; ce document ne couvre que l'étap
 |---|---|
 | **1 (ce document)** | Voyages, itinéraire jour par jour, trajets calculés, cartes, checklist, réservations, roadbook (HTML + PDF) |
 | 2 | Budget et conversion de devises |
-| 3 | Proposition d'itinéraire par IA, nourrie par une recherche Reddit + YouTube, que l'utilisateur ajuste ensuite |
+| 3 | Création de voyage assistée par IA, en deux modes (questions-réponses / génération automatique de plusieurs propositions), avec prise en compte des délais de visa ; recherche Reddit + YouTube (voir §11) |
 
 ### Critères de réussite de l'étape 1
 
@@ -273,3 +273,18 @@ Bouton « Calendrier » sur la page du voyage, avec deux choix.
 - Proposition d'itinéraire par IA et recherche Reddit/YouTube (étape 3). Le modèle de données (days/stops/legs) est conçu pour que l'étape 3 puisse le remplir directement.
 - Modification à plusieurs (les autres ne font que consulter), pièces jointes, notifications, modification hors ligne, cartes hors ligne en dehors du roadbook en cache.
 - Calcul automatique des trajets en transports en commun (pas de service gratuit fiable).
+
+## 11. Étape 3 — décisions déjà prises (pour mémoire)
+
+Cette étape aura sa propre spec. Ce qui est déjà décidé :
+
+- **Deux modes de création**
+  - *Questions-réponses* : l'appli pose les questions une par une (destination, dates, durée, voyageurs, budget, rythme, envies) puis construit l'itinéraire.
+  - *Génération automatique* : on saisit les dates (et la ville de départ) ; l'appli propose **plusieurs voyages différents** ; on en choisit un.
+  - Le voyage retenu devient un voyage normal de l'étape 1 (jours, lieux, trajets, checklist, roadbook, calendrier).
+- **Visas** : nationalité **française** par défaut (modifiable par voyageur). Une destination dont le délai d'obtention du visa dépasse le temps restant avant le départ est écartée ou signalée. L'échéance « Faire le visa avant le … » est ajoutée à la checklist. Chaque information visa affiche « À vérifier sur le site officiel » avec le lien (France Diplomatie, site officiel du pays).
+- **Moteur d'IA (option C)** :
+  - par défaut, **copier-coller avec l'abonnement Claude** : l'appli prépare la demande complète, on la colle dans Claude (recherche web activée), puis on colle la réponse dans l'appli qui crée le voyage ;
+  - en option, une **clé d'API** pour le mode automatique : Claude (payant à l'usage) ou un fournisseur avec offre gratuite (ex. Gemini), conditions à vérifier au moment de la construction ;
+  - un **format de réponse unique** (JSON validé) quel que soit le moteur.
+- **Ordre** : étape 1, puis étape 2 (budget), puis étape 3.
