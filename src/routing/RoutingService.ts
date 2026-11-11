@@ -28,6 +28,7 @@ export interface LatLon {
 }
 
 export interface RoutingService {
-  geocode(query: string): Promise<GeocodeResult[]>;
+  /** `focus` : point autour duquel favoriser les résultats (ex. les autres étapes du voyage). */
+  geocode(query: string, focus?: LatLon): Promise<GeocodeResult[]>;
   route(from: LatLon, to: LatLon, mode: AutoMode): Promise<RouteResult>;
 }

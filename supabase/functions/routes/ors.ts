@@ -80,7 +80,7 @@ export async function handleRoutes(
     return json({ code: 'UNAUTHORIZED', message: ERROR_MESSAGES.UNAUTHORIZED }, 401);
   }
 
-  let body: { action?: string; query?: string; from?: { lat: number; lon: number }; to?: { lat: number; lon: number }; mode?: AutoMode };
+  let body: { action?: string; query?: string; focus?: { lat?: unknown; lon?: unknown }; from?: { lat: number; lon: number }; to?: { lat: number; lon: number }; mode?: AutoMode };
   try {
     body = await req.json();
   } catch {
@@ -92,6 +92,11 @@ export async function handleRoutes(
   let init: RequestInit = { headers: { Authorization: deps.apiKey } };
   if (body.action === 'geocode' && typeof body.query === 'string' && body.query.length <= 200) {
     url = `${ORS_BASE}/geocode/search?text=${encodeURIComponent(body.query)}&size=5&lang=fr`;
+    // Favorise les résultats proches d'un point connu (les noms de lieux sont souvent ambigus).
+    const { lat, lon } = body.focus ?? {};
+    if (typeof lat === 'number' && typeof lon === 'number' && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      url += `&focus.point.lat=${lat}&focus.point.lon=${lon}`;
+    }
   } else if (body.action === 'route' && body.from && body.to && body.mode && ORS_PROFILES[body.mode]) {
     url = `${ORS_BASE}/v2/directions/${ORS_PROFILES[body.mode]}/geojson`;
     init = {

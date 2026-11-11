@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { toInstant } from '../../domain/time';
 import type { PlaceRef, Reservation, ReservationType } from '../../domain/types';
 import type { New } from '../../data/TripRepository';
-import type { RoutingService } from '../../routing/RoutingService';
+import type { LatLon, RoutingService } from '../../routing/RoutingService';
 import { AddressInput } from './AddressInput';
 import { RESERVATION_LABELS } from './labels';
 
@@ -11,13 +11,14 @@ type Draft = New<Reservation> & { id?: string };
 const TRANSPORT: ReservationType[] = ['flight', 'train'];
 
 export function ReservationForm({
-  routing, tripId, initial, defaultTimezone, disabled, onSave, onCancel,
+  routing, tripId, initial, defaultTimezone, disabled, focus, onSave, onCancel,
 }: {
   routing: RoutingService;
   tripId: string;
   initial?: Reservation;
   defaultTimezone: string;
   disabled?: boolean;
+  focus?: LatLon;
   onSave(r: Draft): void;
   onCancel(): void;
 }) {
@@ -80,11 +81,11 @@ export function ReservationForm({
         </label>
       </div>
       {isLodging ? (
-        <AddressInput routing={routing} label="Adresse de l’hébergement" value={toPlace?.address ?? ''} {...place(setToPlace, toPlace)} />
+        <AddressInput routing={routing} focus={focus} label="Adresse de l’hébergement" value={toPlace?.address ?? ''} {...place(setToPlace, toPlace)} />
       ) : (
-        <AddressInput routing={routing} label={isTransport ? 'Lieu de départ' : 'Lieu'} value={fromPlace?.address ?? ''} {...place(setFromPlace, fromPlace)} />
+        <AddressInput routing={routing} focus={focus} label={isTransport ? 'Lieu de départ' : 'Lieu'} value={fromPlace?.address ?? ''} {...place(setFromPlace, fromPlace)} />
       )}
-      {isTransport && <AddressInput routing={routing} label="Lieu d’arrivée" value={toPlace?.address ?? ''} {...place(setToPlace, toPlace)} />}
+      {isTransport && <AddressInput routing={routing} focus={focus} label="Lieu d’arrivée" value={toPlace?.address ?? ''} {...place(setToPlace, toPlace)} />}
       <div className="row">
         <label>
           {isLodging ? 'Date de check-in' : 'Date de départ'}

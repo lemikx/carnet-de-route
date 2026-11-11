@@ -1,17 +1,18 @@
 import { useState, type FormEvent } from 'react';
 import type { Stop, StopKind } from '../../domain/types';
-import type { RoutingService } from '../../routing/RoutingService';
+import type { LatLon, RoutingService } from '../../routing/RoutingService';
 import type { StopInput } from '../../services/tripService';
 import { AddressInput } from './AddressInput';
 import { KIND_LABELS } from './labels';
 
 export function StopEditor({
-  routing, initial, defaultTimezone, disabled, onSave, onCancel,
+  routing, initial, defaultTimezone, disabled, focus, onSave, onCancel,
 }: {
   routing: RoutingService;
   initial?: Stop;
   defaultTimezone: string;
   disabled?: boolean;
+  focus?: LatLon;
   onSave(s: StopInput): void;
   onCancel(): void;
 }) {
@@ -47,6 +48,7 @@ export function StopEditor({
       </label>
       <AddressInput
         routing={routing}
+        focus={focus}
         value={v.address}
         onChange={(address) => setV((s) => ({ ...s, address, lat: null, lon: null }))}
         onPick={(r) => setV((s) => ({ ...s, address: r.label, lat: r.lat, lon: r.lon, timezone: r.timezone }))}

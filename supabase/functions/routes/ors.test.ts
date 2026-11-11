@@ -65,4 +65,27 @@ describe('handleRoutes : accès', () => {
     const r = new Request('https://x/routes', { method: 'POST', headers: { Authorization: `Bearer ${jwt({ role: 'authenticated' })}` }, body: 'null' });
     expect((await handleRoutes(r, deps())).status).toBe(400);
   });
+
+  it('transmet un point de proximité au géocodage', async () => {
+    const d = deps();
+    const r = new Request('https://x/routes', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt({ role: 'authenticated' })}` },
+      body: JSON.stringify({ action: 'geocode', query: 'Kinkaku-ji', focus: { lat: 35.04, lon: 135.73 } }),
+    });
+    await handleRoutes(r, d);
+    const url = String((d.fetchImpl as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0]);
+    expect(url).toContain('focus.point.lat=35.04');
+    expect(url).toContain('focus.point.lon=135.73');
+  });
+  it('ignore un point de proximité invalide', async () => {
+    const d = deps();
+    const r = new Request('https://x/routes', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt({ role: 'authenticated' })}` },
+      body: JSON.stringify({ action: 'geocode', query: 'Kyoto', focus: { lat: 'x', lon: 999 } }),
+    });
+    await handleRoutes(r, d);
+    expect(String((d.fetchImpl as unknown as { mock: { calls: unknown[][] } }).mock.calls[0][0])).not.toContain('focus.point');
+  });
 });

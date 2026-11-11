@@ -25,7 +25,7 @@ export function createEdgeRouting(
     return data as T;
   }
   return {
-    geocode: (query) => call<GeocodeResult[]>({ action: 'geocode', query }),
+    geocode: (query, focus) => call<GeocodeResult[]>({ action: 'geocode', query, ...(focus ? { focus } : {}) }),
     route: (from, to, mode) => call<RouteResult>({ action: 'route', from, to, mode }),
   };
 }

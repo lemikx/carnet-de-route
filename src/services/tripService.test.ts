@@ -158,6 +158,33 @@ describe('TripService', () => {
     expect(order).toEqual(['Tokyo', 'Paris']);
   });
 
+  it('recalcule tout seul le trajet quand une étape sans carte reçoit une position', async () => {
+    const { service } = setup();
+    const b = await service.createTrip(tripInput());
+    const d = b.days.sort((x, y) => x.date.localeCompare(y.date))[0];
+    await service.addStop(d.id, stop('Kyoto', 35.01, 135.77));
+    let r = await service.addStop(d.id, stop('Nara', null as unknown as number, null as unknown as number));
+    expect(r.legs[0].durationMin).toBeNull();
+    r = await service.setLegManual(r.legs[0].id, 'car', 0);
+    expect(r.legs[0]).toMatchObject({ source: 'manual', durationMin: 0 });
+    const nara = r.stops.find((s) => s.title === 'Nara')!;
+    r = await service.updateStop({ ...nara, lat: 34.69, lon: 135.8 });
+    expect(r.legs[0].source).toBe('auto');
+    expect(r.legs[0].durationMin).toBeGreaterThan(0);
+  });
+
+  it('garde une durée saisie à la main quand la position de l’étape ne change pas', async () => {
+    const { service } = setup();
+    const b = await service.createTrip(tripInput());
+    const d = b.days.sort((x, y) => x.date.localeCompare(y.date))[0];
+    await service.addStop(d.id, stop('Kyoto', 35.01, 135.77));
+    let r = await service.addStop(d.id, stop('Nara', 34.69, 135.8));
+    r = await service.setLegManual(r.legs[0].id, 'train', 45);
+    const nara = r.stops.find((s) => s.title === 'Nara')!;
+    r = await service.updateStop({ ...nara, note: 'Cerfs' });
+    expect(r.legs[0]).toMatchObject({ source: 'manual', mode: 'train', durationMin: 45 });
+  });
+
   it('ne crée pas de lieu pour une réservation hors des dates du voyage', async () => {
     const { service } = setup();
     const b = await service.createTrip(tripInput());

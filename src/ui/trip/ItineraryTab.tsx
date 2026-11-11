@@ -96,6 +96,8 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
   const all = orderedStops(bundle.days, bundle.stops);
   const stopById = new Map(bundle.stops.map((s) => [s.id, s]));
   const defaultTz = all.at(-1)?.timezone ?? bundle.trip.homeTimezone;
+  const lastLocated = [...all].reverse().find((s) => s.lat !== null && s.lon !== null);
+  const focus = lastLocated ? { lat: lastLocated.lat!, lon: lastLocated.lon! } : undefined;
 
   async function save(dayId: string, input: StopInput, existing?: Stop) {
     await action.run(async () => {
@@ -167,7 +169,7 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
                     return (
                       <div key={s.id}>
                         {editing?.stop?.id === s.id ? (
-                          <StopEditor routing={routing} initial={s} defaultTimezone={defaultTz} disabled={busy}
+                          <StopEditor routing={routing} initial={s} defaultTimezone={defaultTz} focus={focus} disabled={busy}
                             onSave={(input) => void save(day.id, input, s)} onCancel={() => setEditing(null)} />
                         ) : (
                           <StopCard stop={s} timing={timing.get(s.id)} disabled={busy} index={i} count={stops.length}
@@ -189,7 +191,7 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
                   onDuration={(min) => action.run(() => service.setLegManual(outgoing.id, outgoing.mode, min))} />
               )}
               {editing && !editing.stop && editing.dayId === day.id ? (
-                <StopEditor routing={routing} defaultTimezone={defaultTz} disabled={busy}
+                <StopEditor routing={routing} defaultTimezone={defaultTz} focus={focus} disabled={busy}
                   onSave={(input) => void save(day.id, input)} onCancel={() => setEditing(null)} />
               ) : (
                 <button type="button" className="btn btn-small" style={{ marginTop: 8 }} disabled={busy}

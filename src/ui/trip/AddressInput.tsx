@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import type { GeocodeResult, RoutingService } from '../../routing/RoutingService';
+import type { GeocodeResult, LatLon, RoutingService } from '../../routing/RoutingService';
 
 export function AddressInput({
-  routing, value, onChange, onPick, label = 'Adresse',
+  routing, value, onChange, onPick, label = 'Adresse', focus,
 }: {
   routing: RoutingService;
   value: string;
   onChange(text: string): void;
   onPick(r: GeocodeResult): void;
   label?: string;
+  /** Favorise les lieux proches de ce point. */
+  focus?: LatLon;
 }) {
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<GeocodeResult[] | null>(null);
@@ -28,7 +30,7 @@ export function AddressInput({
     let cancelled = false;
     const t = setTimeout(async () => {
       try {
-        const r = await routing.geocode(q);
+        const r = await routing.geocode(q, focus);
         if (!cancelled) {
           setResults(r);
           setError(null);
@@ -41,7 +43,8 @@ export function AddressInput({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [query, routing]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, routing, focus?.lat, focus?.lon]);
 
   return (
     <div className="field">

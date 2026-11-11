@@ -39,13 +39,15 @@ export function ReservationsTab({ bundle, setBundle }: TripTabProps) {
     });
   const disabled = !online || action.saving;
   const tz = bundle.stops.at(-1)?.timezone ?? bundle.trip.homeTimezone;
+  const located = bundle.stops.filter((s) => s.lat !== null && s.lon !== null).at(-1);
+  const focus = located ? { lat: located.lat!, lon: located.lon! } : undefined;
   const inTrip = (r: Reservation) => r.startAt.date >= bundle.trip.startDate && r.startAt.date <= bundle.trip.endDate;
 
   return (
     <div>
       <SaveError error={action.error} onRetry={action.retry} />
       {editing === 'new' ? (
-        <ReservationForm routing={routing} tripId={bundle.trip.id} defaultTimezone={tz} disabled={disabled}
+        <ReservationForm routing={routing} tripId={bundle.trip.id} defaultTimezone={tz} focus={focus} disabled={disabled}
           onSave={(r) => void saveAndClose(() => service.saveReservation(r))} onCancel={() => setEditing(null)} />
       ) : (
         <button className="btn btn-primary" onClick={() => setEditing('new')} disabled={disabled} style={{ marginBottom: 12 }}>
@@ -57,7 +59,7 @@ export function ReservationsTab({ bundle, setBundle }: TripTabProps) {
         {sortReservations(bundle.reservations).map((r) =>
           editing !== 'new' && editing?.id === r.id ? (
             <li key={r.id}>
-              <ReservationForm routing={routing} tripId={bundle.trip.id} initial={r} defaultTimezone={tz} disabled={disabled}
+              <ReservationForm routing={routing} tripId={bundle.trip.id} initial={r} defaultTimezone={tz} focus={focus} disabled={disabled}
                 onSave={(x) => void saveAndClose(() => service.saveReservation(x))} onCancel={() => setEditing(null)} />
             </li>
           ) : (

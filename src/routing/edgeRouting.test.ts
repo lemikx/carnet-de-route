@@ -24,4 +24,12 @@ describe('createEdgeRouting', () => {
     await expect(p).rejects.toBeInstanceOf(RoutingError);
     await expect(p).rejects.toMatchObject({ code: 'NETWORK' });
   });
+
+  it('envoie le point de proximité avec la recherche d’adresse', async () => {
+    const f = vi.fn(() => ok([]));
+    const r = createEdgeRouting('u', token, f);
+    await r.geocode('Kinkaku-ji', { lat: 35.04, lon: 135.73 });
+    const [, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ action: 'geocode', query: 'Kinkaku-ji', focus: { lat: 35.04, lon: 135.73 } });
+  });
 });

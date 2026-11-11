@@ -212,8 +212,19 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
     },
 
     async updateStop(s) {
-      const { tripId } = await tripIdOfDay(s.dayId);
+      const { tripId, bundle } = await tripIdOfDay(s.dayId);
+      const before = bundle.stops.find((x) => x.id === s.id);
+      const gainedPosition = before && (before.lat === null || before.lon === null) && s.lat !== null && s.lon !== null;
       await repo.saveStop(s);
+      if (gainedPosition) {
+        // Un trajet resté vide (ou à 0 min) autour de cette étape repasse en calcul automatique.
+        for (const leg of bundle.legs) {
+          const touches = leg.fromStopId === s.id || leg.toStopId === s.id;
+          if (touches && leg.source === 'manual' && AUTO_MODES.includes(leg.mode) && !leg.durationMin) {
+            await repo.saveLeg({ ...leg, source: 'auto', durationMin: null, distanceKm: null, geometry: null, error: null, fromKey: null, toKey: null });
+          }
+        }
+      }
       return syncLegs(tripId);
     },
 
