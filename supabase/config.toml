@@ -1,0 +1,7 @@
+# Configuration minimale pour la CLI Supabase (supabase link / db push / functions deploy).
+[functions.routes]
+verify_jwt = true
+
+[functions.calendar]
+# Calendrier Apple ne sait pas envoyer de jeton de connexion : l'accès est protégé par le jeton secret de l'adresse.
+verify_jwt = false
