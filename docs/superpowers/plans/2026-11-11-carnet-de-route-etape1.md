@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Objectif :** une PWA en français pour préparer un voyage (itinéraire, trajets calculés, checklist, réservations, contacts) et produire un roadbook HTML/PDF partageable par lien en lecture seule.
+**Objectif :** une PWA en français pour préparer un voyage (itinéraire, trajets calculés, checklist, réservations, contacts) et produire un roadbook HTML/PDF partageable par lien en lecture seule, avec export calendrier (fichier `.ics` et abonnement `webcal://`).
 
-**Architecture :** logique métier pure dans `src/domain/` (testée unitairement), accès aux données et calcul de trajets derrière deux interfaces (`TripRepository`, `RoutingService`) avec une implémentation réelle (Supabase / Edge Function OpenRouteService) et une implémentation en mémoire pour les tests ; une couche `services/` orchestre les deux ; l'interface React ne parle qu'aux services. Le roadbook est construit par une fonction pure à partir d'un `TripBundle`, ce qui le rend identique pour le propriétaire, le lien partagé et l'impression PDF.
+**Architecture :** logique métier pure dans `src/domain/` (testée unitairement), accès aux données et calcul de trajets derrière deux interfaces (`TripRepository`, `RoutingService`) avec une implémentation réelle (Supabase / Edge Function OpenRouteService) et une implémentation en mémoire pour les tests ; une couche `services/` orchestre les deux ; l'interface React ne parle qu'aux services. Le roadbook et le calendrier sont construits par des fonctions pures à partir d'un `TripBundle`, ce qui les rend identiques pour le propriétaire, le lien partagé, l'impression PDF, le fichier `.ics` et l'abonnement (l'Edge Function `calendar` réutilise le même code du domaine).
 
 **Stack :** Vite 5, React 18, TypeScript (strict), React Router (HashRouter), Supabase JS v2, Luxon (fuseaux horaires), Leaflet + react-leaflet, @dnd-kit (glisser-déposer), idb-keyval, vite-plugin-pwa, Vitest + Testing Library, Playwright, Deno (Edge Function).
 
@@ -22,12 +22,13 @@
 - Jeton de partage : 32 caractères hexadécimaux générés côté serveur (`encode(gen_random_bytes(16),'hex')`, 128 bits) ; un seul lien actif par voyage ; `hide_sensitive` vrai par défaut.
 - Infos sensibles retirées côté serveur si `hide_sensitive` : `reservations.confirmation_number`, `price`, `currency`, `url`, `note` ; `stops.note` ; `stops.url` des lieux liés à une réservation ; `days.note` ; `contacts.note`.
 - Page partagée : `<meta name="robots" content="noindex">`.
+- Calendrier : jeton distinct du jeton de partage (même format, table `calendar_links`) ; options `include_legs` et `include_checklist` vraies par défaut ; trajets inclus si durée **> 30 min** ; activité sans durée = **60 min** ; `REFRESH-INTERVAL;VALUE=DURATION:PT1H` et `X-PUBLISHED-TTL:PT1H` ; nom du calendrier « {nom du voyage} — Carnet de route ».
 - Hors ligne = lecture seule : toute écriture hors ligne lève `OfflineError` et est refusée dans l'interface.
 - Routage par hash (`/#/…`) pour GitHub Pages.
 
 ## Review Focus
 
-1. **Voyage qui traverse des fuseaux horaires** (vol Paris 10:00 → Tokyo 06:00 le lendemain) : durée réelle juste (13 h), aucun faux conflit — test dans la tâche 3 et la tâche 5.
+1. **Voyage qui traverse des fuseaux horaires** (vol Paris 10:00 → Tokyo 06:00 le lendemain) : durée réelle juste (13 h), aucun faux conflit, bonnes heures dans Calendrier — tests dans les tâches 3, 5 et 6b.
 2. **Raccourcir les dates d'un voyage** alors que des jours supprimés contiennent des lieux : l'appli demande confirmation et ne supprime rien sans accord — tests dans la tâche 2 (`diffDays`) et la tâche 9 (`changeDates` refuse sans `confirm`).
 3. **Lieu « sans carte »** (sans coordonnées) : aucun calcul automatique de trajet, trajet en saisie manuelle, carte qui ignore le point sans planter — tests dans la tâche 4 et la tâche 13.
 4. **Roadbook d'un voyage presque vide** (jours sans lieu, aucune réservation) : le roadbook s'affiche sans erreur, avec « Aucune étape prévue » — test dans la tâche 6.
@@ -49,6 +50,7 @@ src/
     checklist.ts        Modèle par défaut, progression, échéances
     roadbook.ts         Construction du roadbook + filtrage des infos sensibles
     format.ts           Formatage FR (dates, durées, distances)
+    calendar.ts         Génération du calendrier .ics
   data/
     TripRepository.ts   Interface + erreurs
     memoryRepository.ts Implémentation en mémoire
@@ -72,11 +74,14 @@ src/
     trip/               ItineraryTab, ChecklistTab, ReservationsTab, ContactsTab, LegRow, StopEditor, AddressInput
     map/MapView.tsx
     roadbook/Roadbook.tsx, roadbook.css (écran + @media print)
+    calendar/CalendarPanel.tsx
     common/             OfflineBanner, ConfirmDialog, CopyButton
 supabase/
   migrations/0001_schema.sql
   migrations/0002_sharing.sql
   functions/routes/index.ts
+  functions/calendar/index.ts   Abonnement calendrier (sans compte, par jeton)
+  functions/_shared/domain/     Copie générée de src/domain (scripts/sync-domain.mjs), non versionnée
   tests/*.sql (pgTAP)
 e2e/*.spec.ts
 docs/MISE-EN-PLACE.md
@@ -243,6 +248,33 @@ Règles : un trajet doit exister pour chaque paire consécutive de `ordered` (y 
 - [ ] **Step 2 :** FAIL. **Step 3 :** Implémenter. **Step 4 :** PASS.
 - [ ] **Step 5 : Commit** `feat(domain): roadbook et filtrage des infos sensibles`
 
+### Task 6b : Génération du calendrier (.ics)
+
+**Files :**
+- Create : `src/domain/calendar.ts`
+- Test : `src/domain/calendar.test.ts`
+
+**Interfaces :**
+- Consumes : `computeDaySchedule`, `orderedStops`, `toInstant`, `addMinutes`, `formatDuration`.
+- Produces :
+  - `CalendarOptions { includeLegs: boolean; includeChecklist: boolean }`
+  - `buildCalendar(bundle: TripBundle, opts: CalendarOptions, now: Date = new Date()): string` — texte iCalendar (RFC 5545), lignes terminées par `\r\n`.
+
+Règles (spec §5.9) : heures en UTC (`DTSTART:20261201T090000Z`) calculées depuis le fuseau de chaque élément ; journées entières en `DTSTART;VALUE=DATE` avec `DTEND` exclusif (hôtel 03/12 → 05/12 : `DTSTART;VALUE=DATE:20261203`, `DTEND;VALUE=DATE:20261205`) ; `UID` stable `{type}-{id}@carnet-de-route` (`res-`, `stop-`, `leg-`, `todo-`) ; `DTSTAMP` = `now` ; lieux liés à une réservation non dupliqués (l'événement vient de la réservation) ; trajets `source: 'reservation'` exclus ; trajet inclus seulement si `durationMin > 30` et si l'arrivée estimée du lieu de départ + sa durée est connue ; éléments de checklist cochés exclus ; `DESCRIPTION` = adresse, téléphone, n° de confirmation, lien ; échappement de `\`, `;`, `,` et retours à la ligne (`\n`) ; repli des lignes à 75 octets UTF-8 (continuation commençant par un espace, sans couper un caractère multioctet). Titres : « ✈️ {from} → {to} », « 🚆 {from} → {to} », « 🏨 {title} », activité = `title`, trajet « {🚗|🚶|🚲} {formatDuration} vers {titre du lieu d'arrivée} », « À faire : {label} ».
+
+- [ ] **Step 1 : Tests qui échouent**
+  - Vol Paris 01/12 10:00 `Europe/Paris` → Tokyo 02/12 06:00 `Asia/Tokyo` → `DTSTART:20261201T090000Z` et `DTEND:20261201T210000Z`.
+  - Hôtel 03/12 → 05/12 → les deux lignes `VALUE=DATE` ci-dessus.
+  - Activité 14:00 sans durée → `DTEND` = 15:00 locale.
+  - Trajet de 30 min → absent ; de 65 min avec départ connu → présent, titre « 🚗 1 h 05 vers Kyoto » ; `includeLegs: false` → aucun `leg-`.
+  - Checklist : élément non coché avec échéance → présent ; coché → absent ; `includeChecklist: false` → aucun `todo-`.
+  - Deux générations du même bundle → mêmes `UID`.
+  - Titre de 120 caractères avec accents et virgule → chaque ligne ≤ 75 octets, virgule échappée `\,`, et la ligne dépliée redonne le titre exact.
+  - En-tête : `BEGIN:VCALENDAR`, `VERSION:2.0`, `PRODID:-//Carnet de route//FR`, `X-WR-CALNAME:{nom} — Carnet de route`, `REFRESH-INTERVAL;VALUE=DURATION:PT1H`, `X-PUBLISHED-TTL:PT1H`.
+  - Voyage sans élément daté → calendrier valide sans `VEVENT`.
+- [ ] **Step 2 :** FAIL. **Step 3 :** Implémenter (sans dépendance externe en dehors de Luxon). **Step 4 :** PASS.
+- [ ] **Step 5 : Commit** `feat(domain): génération du calendrier .ics`
+
 ### Task 7 : Interface de données et implémentation en mémoire
 
 **Files :**
@@ -280,12 +312,17 @@ export interface TripRepository {
   createShareLink(tripId: string, hideSensitive: boolean): Promise<ShareLink>; // désactive l'ancien
   revokeShareLink(tripId: string): Promise<void>;
   getSharedRoadbook(token: string): Promise<SharedRoadbookData | null>;  // filtré si hideSensitive
+  getCalendarLink(tripId: string): Promise<CalendarLink | null>;
+  createCalendarLink(tripId: string, opts: CalendarOptions): Promise<CalendarLink>; // désactive l'ancien
+  updateCalendarOptions(tripId: string, opts: CalendarOptions): Promise<CalendarLink>;
+  revokeCalendarLink(tripId: string): Promise<void>;
 }
+export interface CalendarLink { tripId: string; token: string; includeLegs: boolean; includeChecklist: boolean; active: boolean; createdAt: string }
 ```
 - `repositoryContract.ts` : `runRepositoryContract(name: string, make: () => Promise<TripRepository>)` — suite Vitest réutilisée par la tâche 10.
 - `createMemoryRepository(seed?: TripBundle[]): TripRepository` — ids `crypto.randomUUID()`, jeton = 32 hex aléatoires, `getSharedRoadbook` applique `stripSensitive` si besoin.
 
-- [ ] **Step 1 : Tests qui échouent** (dans le contrat) : création/lecture d'un voyage ; `deleteTrip` vide le bundle et `getBundle` lève `NotFoundError` ; `deleteDays` supprime les lieux du jour ; `deleteReservation` supprime ses lieux ; `reorderStops` réécrit `position` 0..n-1 ; `createShareLink` deux fois → l'ancien jeton renvoie `null` ; `revokeShareLink` → `null` ; jeton inconnu → `null` ; voyage supprimé → `getSharedRoadbook(ancienJeton)` → `null` ; `hideSensitive` → sentinelles absentes ; jeton de 32 caractères `[0-9a-f]`.
+- [ ] **Step 1 : Tests qui échouent** (dans le contrat) : création/lecture d'un voyage ; `deleteTrip` vide le bundle et `getBundle` lève `NotFoundError` ; `deleteDays` supprime les lieux du jour ; `deleteReservation` supprime ses lieux ; `reorderStops` réécrit `position` 0..n-1 ; `createShareLink` deux fois → l'ancien jeton renvoie `null` ; `revokeShareLink` → `null` ; jeton inconnu → `null` ; voyage supprimé → `getSharedRoadbook(ancienJeton)` → `null` ; `hideSensitive` → sentinelles absentes ; jeton de 32 caractères `[0-9a-f]` ; `createCalendarLink` deux fois → un seul actif ; jeton calendrier ≠ jeton de partage du même voyage.
 - [ ] **Step 2 :** FAIL. **Step 3 :** Implémenter la version mémoire. **Step 4 :** PASS.
 - [ ] **Step 5 : Commit** `feat(data): interface TripRepository et version mémoire`
 
@@ -360,18 +397,20 @@ Chaque méthode qui modifie lieux ou réservations appelle `syncLegs` à la fin.
 ### Task 10 : Base Supabase, RLS, partage et implémentation Supabase
 
 **Files :**
-- Create : `supabase/migrations/0001_schema.sql`, `supabase/migrations/0002_sharing.sql`, `supabase/tests/rls.sql`, `supabase/tests/sharing.sql`, `src/data/supabaseRepository.ts`, `scripts/test-db.sh`
+- Create : `supabase/migrations/0001_schema.sql`, `supabase/migrations/0002_sharing.sql`, `supabase/migrations/0003_calendar.sql`, `supabase/tests/rls.sql`, `supabase/tests/sharing.sql`, `supabase/tests/calendar.sql`, `src/data/supabaseRepository.ts`, `scripts/test-db.sh`
 - Test : `src/data/supabaseRepository.test.ts` (contrat de la tâche 7, exécuté seulement si `SUPABASE_TEST_URL` est défini)
 
 **Interfaces :**
 - Produces : tables de la spec §4 (snake_case) + `legs.from_key`, `legs.to_key` ; `user_id uuid default auth.uid()` ; clés étrangères `on delete cascade` ; RLS `user_id = auth.uid()` pour select/insert/update/delete sur chaque table ; trigger `updated_at`.
 - `0002_sharing.sql` : table `share_links` ; fonction `create_share_link(p_trip uuid, p_hide boolean) returns share_links` (désactive l'ancien, jeton `encode(gen_random_bytes(16),'hex')`) ; `get_shared_roadbook(p_token text) returns jsonb` en `security definer`, `set search_path = public`, `grant execute … to anon, authenticated` ; renvoie `null` si jeton inconnu ou inactif, sinon `{trip, days, stops, legs, reservations, checklist, contacts, hide_sensitive, owner_name, updated_at}` du seul voyage du lien, avec les champs sensibles remplacés par `''`/`null` côté SQL si `hide_sensitive`. `owner_name` = partie avant `@` de l'e-mail du propriétaire.
+- `0003_calendar.sql` : table `calendar_links` (RLS propriétaire) ; `create_calendar_link(p_trip uuid, p_legs boolean, p_checklist boolean)` (désactive l'ancien) ; `get_calendar_bundle(p_token text) returns jsonb` en `security definer`, **exécutable uniquement par `service_role`** (appelée par l'Edge Function `calendar`), renvoie `null` si jeton inconnu ou inactif, sinon le bundle complet (non filtré) + options.
 - `createSupabaseRepository(client: SupabaseClient): TripRepository` (conversion snake_case ↔ camelCase).
 - `scripts/test-db.sh` : lance `supabase test db` si la CLI et Docker sont disponibles ; sinon affiche comment les installer et sort en échec explicite.
 
 - [ ] **Step 1 : Tests SQL qui échouent (pgTAP)**
   - `rls.sql` : l'utilisateur B ne voit aucune ligne du voyage de A (toutes les tables) et ne peut ni modifier ni supprimer.
   - `sharing.sql` : en rôle `anon`, aucun `select` direct possible sur `trips` ; `get_shared_roadbook(jeton actif)` renvoie le voyage ; jeton désactivé, inconnu, ou voyage supprimé → `null` ; avec `hide_sensitive` → `confirmation_number`, `price`, notes vides ; le JSON ne contient jamais l'id d'un autre voyage du même propriétaire.
+  - `calendar.sql` : `anon` et `authenticated` ne peuvent pas exécuter `get_calendar_bundle` ; `service_role` : jeton actif → bundle, désactivé/inconnu/voyage supprimé → `null` ; un jeton de partage passé à `get_calendar_bundle` → `null`.
 - [ ] **Step 2 :** `npm run test:db` → FAIL.
 - [ ] **Step 3 :** Écrire les migrations et `supabaseRepository.ts`.
 - [ ] **Step 4 :** `npm run test:db` → PASS ; `SUPABASE_TEST_URL=… npx vitest run src/data` → contrat PASS.
@@ -487,6 +526,29 @@ Page `#/r/:token` : accessible sans connexion ; ajoute `<meta name="robots" cont
 - [ ] **Step 2 :** FAIL. **Step 3 :** Implémenter. En mode `memory`, les deux contextes Playwright partagent les données via un `seed` exposé par `window.__memoryStore` (uniquement quand `VITE_DATA=memory`). **Step 4 :** PASS.
 - [ ] **Step 5 : Commit** `feat(ui): partage du roadbook par lien`
 
+### Task 16b : Export calendrier (fichier + abonnement)
+
+**Files :**
+- Create : `src/ui/calendar/CalendarPanel.tsx`, `supabase/functions/calendar/index.ts`, `scripts/sync-domain.mjs`
+- Modify : `package.json` (script `sync:domain`, lancé avant `deno test` et avant tout déploiement des fonctions), `supabase/config.toml` (`[functions.calendar] verify_jwt = false`), `.gitignore` (`supabase/functions/_shared/domain/`)
+- Test : `src/ui/calendar/CalendarPanel.test.tsx`, `supabase/functions/calendar/index.test.ts` (Deno), `e2e/calendar.spec.ts`
+
+**Interfaces :**
+- Consumes : `buildCalendar`, `CalendarOptions` (tâche 6b), méthodes calendrier de `TripRepository` (tâche 7), `get_calendar_bundle` (tâche 10), `CopyButton`.
+- Produces :
+  - `calendarFeedUrl(supabaseUrl: string, token: string): string` → `webcal://{hôte}/functions/v1/calendar?token={token}` (et `calendarHttpsUrl` avec `https://` pour « Copier l'adresse »).
+  - `downloadIcs(filename: string, ics: string): void` — `Blob` `text/calendar;charset=utf-8`, nom `{nom-du-voyage}.ics` (sans caractères interdits).
+  - Edge Function `GET /calendar?token=…` : `handleCalendar(req: Request, getBundle: (token: string) => Promise<{bundle: TripBundle; opts: CalendarOptions} | null>): Promise<Response>` (injection pour les tests) ; 200 `text/calendar; charset=utf-8` + `Cache-Control: private, max-age=900` ; jeton absent, inconnu ou inactif → 404 corps vide ; méthode autre que GET → 405. `getBundle` réel = RPC `get_calendar_bundle` avec `SUPABASE_SERVICE_ROLE_KEY`. `scripts/sync-domain.mjs` copie `src/domain/*.ts` (hors tests) dans `supabase/functions/_shared/domain/` en réécrivant `from 'luxon'` en `from 'npm:luxon@3'`.
+
+Panneau « Calendrier » (page voyage) : cases « Inclure les trajets de plus de 30 min » et « Inclure les échéances de la checklist » (cochées) ; « Télécharger (.ics) » + rappel « Si tu modifies le voyage, réimporte le fichier ou utilise plutôt l'abonnement. » ; « S'abonner » → crée l'abonnement puis ouvre l'URL `webcal://` ; avec abonnement actif : « Copier l'adresse », « Nouvelle adresse », « Désactiver » (confirmation) et avertissement exact « Cette adresse contient tes numéros de réservation. Ne la partage pas : pour ta famille, utilise le partage du roadbook. » ; changer une case avec un abonnement actif appelle `updateCalendarOptions`. En mode `memory`, « S'abonner » affiche l'adresse mais signale « Abonnement disponible une fois l'appli reliée à Supabase. »
+
+- [ ] **Step 1 : Tests qui échouent**
+  - `CalendarPanel` : cases cochées par défaut ; « Télécharger » appelle `downloadIcs` avec un contenu commençant par `BEGIN:VCALENDAR` ; avertissement présent quand un abonnement est actif ; « Désactiver » demande confirmation.
+  - `calendar/index.test.ts` : jeton valide → 200, `Content-Type` `text/calendar`, corps contient `BEGIN:VEVENT` ; `getBundle` → `null` → 404 sans corps ; sans `token` → 404 ; `POST` → 405.
+  - `e2e/calendar.spec.ts` : voyage avec un vol → « Télécharger (.ics) » → le fichier téléchargé contient `✈️` et `DTSTART:` en UTC.
+- [ ] **Step 2 :** FAIL. **Step 3 :** Implémenter. **Step 4 :** PASS.
+- [ ] **Step 5 : Commit** `feat: export calendrier (.ics et abonnement)`
+
 ### Task 17 : Parcours complet, hors ligne et guide de mise en place
 
 **Files :**
@@ -494,9 +556,9 @@ Page `#/r/:token` : accessible sans connexion ; ajoute `<meta name="robots" cont
 - Modify : `.github/workflows/deploy.yml` (ajout `npm run test:e2e`)
 
 - [ ] **Step 1 : Tests**
-  - `full-journey.spec.ts` (mode memory) : créer un voyage Paris → Japon (5 jours) → vol aller → hôtel → 3 activités avec trajets → conflit signalé puis corrigé → checklist 3 cochés → contact → roadbook → lien partagé ouvert sans connexion → supprimer le voyage → le lien affiche « Ce roadbook n'est plus partagé. ».
+  - `full-journey.spec.ts` (mode memory) : créer un voyage Paris → Japon (5 jours) → vol aller → hôtel → 3 activités avec trajets → conflit signalé puis corrigé → checklist 3 cochés → contact → roadbook → lien partagé ouvert sans connexion → fichier calendrier téléchargé → supprimer le voyage → le lien affiche « Ce roadbook n'est plus partagé. ».
   - `offline.spec.ts` : ouvrir un voyage, `context.setOffline(true)`, recharger → voyage et roadbook visibles, bandeau « Hors ligne — consultation seulement », boutons de modification désactivés.
 - [ ] **Step 2 :** `npm run test:e2e` → PASS (corriger ce qui échoue dans la tâche propriétaire du code).
-- [ ] **Step 3 :** Rédiger `docs/MISE-EN-PLACE.md` en français, pas à pas : créer le projet Supabase ; appliquer les migrations (`supabase db push`) ; activer l'e-mail OTP et ajouter l'URL GitHub Pages aux URL de redirection ; créer la clé OpenRouteService ; l'enregistrer **soi-même** avec `supabase secrets set ORS_API_KEY=…` (ne jamais la coller dans une conversation ni la committer) ; déployer la fonction (`supabase functions deploy routes`) ; créer le dépôt GitHub, renseigner les variables `VITE_DATA=supabase`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, activer Pages (source : GitHub Actions) ; installer l'appli sur Mac (Safari → Fichier → Ajouter au Dock) et sur iPhone (Partager → Sur l'écran d'accueil) ; checklist de test manuel (synchro Mac ↔ iPhone, export PDF dans Fichiers, lien partagé ouvert sur un autre téléphone).
+- [ ] **Step 3 :** Rédiger `docs/MISE-EN-PLACE.md` en français, pas à pas : créer le projet Supabase ; appliquer les migrations (`supabase db push`) ; activer l'e-mail OTP et ajouter l'URL GitHub Pages aux URL de redirection ; créer la clé OpenRouteService ; l'enregistrer **soi-même** avec `supabase secrets set ORS_API_KEY=…` (ne jamais la coller dans une conversation ni la committer) ; lancer `npm run sync:domain` puis déployer les fonctions (`supabase functions deploy routes` et `supabase functions deploy calendar --no-verify-jwt`) ; créer le dépôt GitHub, renseigner les variables `VITE_DATA=supabase`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, activer Pages (source : GitHub Actions) ; installer l'appli sur Mac (Safari → Fichier → Ajouter au Dock) et sur iPhone (Partager → Sur l'écran d'accueil) ; checklist de test manuel (synchro Mac ↔ iPhone, export PDF dans Fichiers, lien partagé ouvert sur un autre téléphone, import du `.ics` et abonnement dans Calendrier sur Mac et iPhone, modification du voyage visible dans l'abonnement après mise à jour).
 - [ ] **Step 4 :** `npm test && npm run test:e2e && npm run build` → tout PASS.
 - [ ] **Step 5 : Commit** `test: parcours complet, hors ligne ; docs: guide de mise en place`
