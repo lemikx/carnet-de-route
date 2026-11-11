@@ -207,6 +207,23 @@ describe('TripService', () => {
     expect(r.stops.find((s) => s.id === nara.id)).toMatchObject({ dayId: d2.id, position: 1 });
   });
 
+  it('duplique le budget (voyageurs, lignes, enveloppe) sans les dépenses', async () => {
+    const { service, repo } = setup();
+    const b = await service.createTrip(tripInput());
+    const alice = await repo.saveTraveler({ tripId: b.trip.id, name: 'Alice', position: 0 });
+    const bob = await repo.saveTraveler({ tripId: b.trip.id, name: 'Bob', position: 1 });
+    await repo.saveBudgetLine({ tripId: b.trip.id, category: 'food', label: 'Repas', amount: 40, currency: 'EUR', mode: 'per_person_per_day', position: 0, rateToEur: 1, rateManual: false, rateDate: '2026-11-11' });
+    await repo.saveExpense({ tripId: b.trip.id, date: '2026-12-01', category: 'food', label: 'Dîner', amount: 60, currency: 'EUR', rateToEur: 1, rateManual: false, paidBy: alice.id, participantIds: [alice.id, bob.id], lineId: null, reservationId: null });
+    await repo.updateBudgetSettings(b.trip.id, { cap: 2000, capMode: 'per_person', fxMarginPct: 5 });
+    const copy = await service.duplicateTrip(b.trip.id, 'Japon (copie)');
+    const budget = await repo.getBudget(copy.trip.id);
+    expect(budget.travelers.map((t) => t.name)).toEqual(['Alice', 'Bob']);
+    expect(budget.travelers.every((t) => ![alice.id, bob.id].includes(t.id))).toBe(true);
+    expect(budget.lines).toHaveLength(1);
+    expect(budget.expenses).toEqual([]);
+    expect(copy.trip).toMatchObject({ budgetCap: 2000, budgetCapMode: 'per_person', fxMarginPct: 5 });
+  });
+
   it('duplique un voyage avec tout son contenu', async () => {
     const { service } = setup();
     const b = await service.createTrip(tripInput());

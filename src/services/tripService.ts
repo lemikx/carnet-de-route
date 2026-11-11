@@ -190,6 +190,18 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
         void _kid;
         await repo.saveContact({ ...rest, tripId: trip.id });
       }
+      // Budget : voyageurs et lignes prévues (l'enveloppe est déjà dans la fiche du voyage) ; jamais les dépenses.
+      const budget = await repo.getBudget(id);
+      for (const t of budget.travelers) {
+        const { id: _tid, ...rest } = t;
+        void _tid;
+        await repo.saveTraveler({ ...rest, tripId: trip.id });
+      }
+      for (const l of budget.lines) {
+        const { id: _lid2, ...rest } = l;
+        void _lid2;
+        await repo.saveBudgetLine({ ...rest, tripId: trip.id });
+      }
       return repo.getBundle(trip.id);
     },
 
