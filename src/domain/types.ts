@@ -24,6 +24,10 @@ export interface Trip {
   localCurrency: string;
   homeTimezone: string;
   updatedAt: string;
+  /** Budget (étape 2) : jamais exposé par le partage, le calendrier ni le roadbook. */
+  budgetCap?: number | null;
+  budgetCapMode?: 'total' | 'per_person';
+  fxMarginPct?: number;
 }
 
 export interface Day {

@@ -10,7 +10,11 @@ import { createFakeRouting } from '../routing/fakeRouting';
 import type { RoutingService } from '../routing/RoutingService';
 import { createTripService, type TripService } from '../services/tripService';
 import { DEFAULT_HEAVY_THRESHOLD_MIN } from '../domain/schedule';
-import { getDataMode, type DataMode } from './config';
+import { getDataMode, getFxMode, type DataMode } from './config';
+import { createFakeFx } from '../fx/fakeFx';
+import { createFrankfurterFx } from '../fx/frankfurterFx';
+import type { FxService } from '../fx/FxService';
+import { idbStore } from '../offline/cachedRepository';
 import { isNetworkAuthError, readLastEmail, resolveUser, writeLastEmail, type AppUser } from './auth';
 
 export interface Settings {
@@ -22,6 +26,7 @@ export interface AppValue {
   repo: TripRepository;
   service: TripService;
   routing: RoutingService;
+  fx: FxService;
   user: AppUser | null;
   authReady: boolean;
   supabase: SupabaseClient | null;
@@ -61,15 +66,16 @@ export function useApp(): AppValue {
 }
 
 /** Fournisseur pour les tests : services injectés, utilisateur connecté. */
-export function TestAppProvider({ repo, routing, children }: { repo: TripRepository; routing?: RoutingService; children: ReactNode }) {
+export function TestAppProvider({ repo, routing, fx, children }: { repo: TripRepository; routing?: RoutingService; fx?: FxService; children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>({ heavyThresholdMin: DEFAULT_HEAVY_THRESHOLD_MIN });
   const r = routing ?? createFakeRouting();
+  const fxService = useMemo(() => fx ?? createFakeFx(), [fx]);
   const value = useMemo<AppValue>(
     () => ({
-      mode: 'memory', repo, routing: r, service: createTripService(repo, r), user: { email: 'test@example.com' }, authReady: true,
+      mode: 'memory', repo, routing: r, fx: fxService, service: createTripService(repo, r), user: { email: 'test@example.com' }, authReady: true,
       supabase: null, supabaseUrl: '', settings, setSettings, signIn: async () => {}, signOut: async () => {},
     }),
-    [repo, r, settings],
+    [repo, r, fxService, settings],
   );
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
@@ -121,10 +127,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [core.supabase]);
 
+  const fx = useMemo<FxService>(
+    () => (getFxMode(env) === 'fake' ? createFakeFx() : createFrankfurterFx((...a) => fetch(...a), idbStore)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   const value = useMemo<AppValue>(
     () => ({
       mode,
       ...core,
+      fx,
       service: createTripService(core.repo, core.routing),
       user,
       authReady,
@@ -152,7 +165,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setUser(null);
       },
     }),
-    [mode, core, user, authReady, supabaseUrl, settings],
+    [mode, core, fx, user, authReady, supabaseUrl, settings],
   );
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

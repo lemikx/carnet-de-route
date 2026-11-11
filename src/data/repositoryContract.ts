@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { NotFoundError, type New, type TripRepository } from './TripRepository';
+import { BudgetError, NotFoundError, type New, type TripRepository } from './TripRepository';
+import type { BudgetLine, Expense, Traveler } from '../domain/budget/types';
 import type { Reservation, Stop, Trip } from '../domain/types';
 
 const newTrip = (): New<Trip> => ({
@@ -130,6 +131,94 @@ export function runRepositoryContract(name: string, make: () => Promise<TripRepo
       expect(updated).toMatchObject({ token: second.token, includeLegs: false, includeChecklist: true });
       await repo.revokeCalendarLink(trip.id);
       expect(await repo.getCalendarLink(trip.id)).toBeNull();
+    });
+
+    describe('budget', () => {
+      const traveler = (tripId: string, name: string, position: number): New<Traveler> => ({ tripId, name, position });
+      const line = (tripId: string): New<BudgetLine> => ({
+        tripId, category: 'food', label: 'Repas', amount: 40, currency: 'EUR', mode: 'per_person_per_day', position: 0,
+        rateToEur: 1, rateManual: false, rateDate: '2026-11-11',
+      });
+      const expense = (tripId: string, paidBy: string, participantIds: string[], over: Partial<Expense> = {}): New<Expense> => ({
+        tripId, date: '2026-12-01', category: 'food', label: 'Dîner', amount: 60, currency: 'EUR', rateToEur: 1, rateManual: false,
+        paidBy, participantIds, lineId: null, reservationId: null, ...over,
+      });
+      async function budgetSetup() {
+        const { repo, trip } = await setup();
+        const alice = await repo.saveTraveler(traveler(trip.id, 'Alice', 0));
+        const bob = await repo.saveTraveler(traveler(trip.id, 'Bob', 1));
+        return { repo, trip, alice, bob };
+      }
+
+      it('enregistre voyageurs, lignes et dépenses puis les relit', async () => {
+        const { repo, trip, alice, bob } = await budgetSetup();
+        const l = await repo.saveBudgetLine(line(trip.id));
+        const e = await repo.saveExpense(expense(trip.id, alice.id, [alice.id, bob.id], { lineId: l.id }));
+        const data = await repo.getBudget(trip.id);
+        expect(data.travelers.map((t) => t.name)).toEqual(['Alice', 'Bob']);
+        expect(data.lines).toHaveLength(1);
+        expect(data.expenses).toHaveLength(1);
+        expect(data.expenses[0]).toMatchObject({ id: e.id, paidBy: alice.id, lineId: l.id });
+        expect([...data.expenses[0].participantIds].sort()).toEqual([alice.id, bob.id].sort());
+      });
+
+      it('met à jour l’enveloppe et la marge du voyage', async () => {
+        const { repo, trip } = await budgetSetup();
+        await repo.updateBudgetSettings(trip.id, { cap: 3000, capMode: 'per_person', fxMarginPct: 5 });
+        expect((await repo.getBundle(trip.id)).trip).toMatchObject({ budgetCap: 3000, budgetCapMode: 'per_person', fxMarginPct: 5 });
+        await repo.updateBudgetSettings(trip.id, { cap: null, capMode: 'total', fxMarginPct: 3 });
+        expect((await repo.getBundle(trip.id)).trip.budgetCap ?? null).toBeNull();
+      });
+
+      it('supprime tout le budget avec le voyage', async () => {
+        const { repo, trip, alice } = await budgetSetup();
+        await repo.saveExpense(expense(trip.id, alice.id, [alice.id]));
+        await repo.deleteTrip(trip.id);
+        const left = await repo.getBudget(trip.id).catch(() => ({ travelers: [], lines: [], expenses: [] }));
+        expect(left).toEqual({ travelers: [], lines: [], expenses: [] });
+      });
+
+      it('garde les dépenses « hors prévu » quand une ligne ou une réservation disparaît', async () => {
+        const { repo, trip, alice } = await budgetSetup();
+        const l = await repo.saveBudgetLine(line(trip.id));
+        const r = await repo.saveReservation(newReservation(trip.id));
+        await repo.saveExpense(expense(trip.id, alice.id, [alice.id], { lineId: l.id }));
+        await repo.saveExpense(expense(trip.id, alice.id, [alice.id], { reservationId: r.id }));
+        await repo.deleteBudgetLine(l.id);
+        await repo.deleteReservation(r.id);
+        const { expenses } = await repo.getBudget(trip.id);
+        expect(expenses).toHaveLength(2);
+        expect(expenses.every((x) => x.lineId === null && x.reservationId === null)).toBe(true);
+      });
+
+      it('refuse les cas invalides', async () => {
+        const { repo, trip, alice, bob } = await budgetSetup();
+        await repo.saveExpense(expense(trip.id, alice.id, [alice.id, bob.id]));
+        await expect(repo.deleteTraveler(alice.id)).rejects.toMatchObject({ code: 'TRAVELER_IN_USE' });
+        await expect(repo.saveExpense(expense(trip.id, alice.id, []))).rejects.toMatchObject({ code: 'NO_PARTICIPANT' });
+        const l = await repo.saveBudgetLine(line(trip.id));
+        const r = await repo.saveReservation(newReservation(trip.id));
+        await expect(repo.saveExpense(expense(trip.id, alice.id, [alice.id], { lineId: l.id, reservationId: r.id }))).rejects.toBeInstanceOf(BudgetError);
+        const chloe = await repo.saveTraveler(traveler(trip.id, 'Chloé', 2));
+        await repo.deleteTraveler(chloe.id);
+        expect((await repo.getBudget(trip.id)).travelers).toHaveLength(2);
+      });
+
+      it('refuse de supprimer le dernier voyageur', async () => {
+        const { repo, trip } = await setup();
+        const only = await repo.saveTraveler(traveler(trip.id, 'Seul', 0));
+        await expect(repo.deleteTraveler(only.id)).rejects.toMatchObject({ code: 'LAST_TRAVELER' });
+      });
+
+      it('ne laisse fuiter aucun champ budget par le roadbook partagé', async () => {
+        const { repo, trip } = await budgetSetup();
+        await repo.updateBudgetSettings(trip.id, { cap: 3000, capMode: 'total', fxMarginPct: 7 });
+        for (const hide of [true, false]) {
+          const link = await repo.createShareLink(trip.id, hide);
+          const json = JSON.stringify(await repo.getSharedRoadbook(link.token));
+          expect(json).not.toMatch(/budgetCap|budget_cap|fxMargin|fx_margin|travelers|expenses/);
+        }
+      });
     });
   });
 }

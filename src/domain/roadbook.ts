@@ -1,3 +1,4 @@
+import { omitBudget } from './budget/types';
 import { sortReservations } from './reservations';
 import { computeDaySchedule, type DaySchedule } from './schedule';
 import type { ChecklistItem, Contact, Day, Leg, Reservation, Stop, Trip, TripBundle } from './types';
@@ -26,6 +27,7 @@ export function stripSensitive(bundle: TripBundle): TripBundle {
   const linked = new Set(bundle.reservations.map((r) => r.id));
   return {
     ...bundle,
+    trip: omitBudget(bundle.trip),
     days: bundle.days.map((d) => ({ ...d, note: '' })),
     stops: bundle.stops.map((s) => ({
       ...s,
@@ -73,7 +75,7 @@ export function buildRoadbook(
   }));
 
   return {
-    trip: bundle.trip,
+    trip: omitBudget(bundle.trip),
     overview,
     days: rbDays,
     reservations: sortReservations(bundle.reservations),

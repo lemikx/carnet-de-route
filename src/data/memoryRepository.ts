@@ -1,8 +1,10 @@
+import { omitBudget } from '../domain/budget/types';
+import type { BudgetLine, Expense, Traveler } from '../domain/budget/types';
 import { stripSensitive } from '../domain/roadbook';
 import type {
   ChecklistItem, Contact, Day, Leg, Reservation, ShareLink, Stop, Trip, TripBundle,
 } from '../domain/types';
-import { DEFAULT_OWNER_NAME, NotFoundError, type CalendarLink, type New, type TripRepository } from './TripRepository';
+import { BudgetError, DEFAULT_OWNER_NAME, NotFoundError, type CalendarLink, type New, type TripRepository } from './TripRepository';
 
 interface Store {
   trips: Trip[];
@@ -15,6 +17,9 @@ interface Store {
   shareLinks: ShareLink[];
   calendarLinks: CalendarLink[];
   displayName?: string;
+  travelers: Traveler[];
+  budgetLines: BudgetLine[];
+  expenses: Expense[];
 }
 
 export interface KeyStorage {
@@ -35,7 +40,7 @@ const now = () => new Date().toISOString();
 const clone = <T>(v: T): T => structuredClone(v);
 
 function emptyStore(): Store {
-  return { trips: [], days: [], stops: [], legs: [], reservations: [], checklist: [], contacts: [], shareLinks: [], calendarLinks: [] };
+  return { trips: [], days: [], stops: [], legs: [], reservations: [], checklist: [], contacts: [], shareLinks: [], calendarLinks: [], travelers: [], budgetLines: [], expenses: [] };
 }
 
 export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: KeyStorage } = {}): TripRepository {
@@ -139,6 +144,9 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
       store.contacts = store.contacts.filter((c) => c.tripId !== id);
       store.shareLinks = store.shareLinks.filter((l) => l.tripId !== id);
       store.calendarLinks = store.calendarLinks.filter((l) => l.tripId !== id);
+      store.travelers = store.travelers.filter((x) => x.tripId !== id);
+      store.budgetLines = store.budgetLines.filter((x) => x.tripId !== id);
+      store.expenses = store.expenses.filter((x) => x.tripId !== id);
       return done(undefined);
     },
     async createDays(tripId, dates) {
@@ -200,6 +208,9 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
       const r = store.reservations.find((x) => x.id === id);
       removeStops(new Set(store.stops.filter((s) => s.reservationId === id).map((s) => s.id)));
       store.reservations = store.reservations.filter((x) => x.id !== id);
+      store.expenses.forEach((e) => {
+        if (e.reservationId === id) e.reservationId = null;
+      });
       if (r) touch(r.tripId);
       return done(undefined);
     },
@@ -243,7 +254,7 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
       if (!link || !store.trips.some((t) => t.id === link.tripId)) return null;
       const bundle = bundleOf(link.tripId);
       return {
-        bundle: link.hideSensitive ? stripSensitive(bundle) : bundle,
+        bundle: link.hideSensitive ? stripSensitive(bundle) : { ...bundle, trip: omitBudget(bundle.trip) },
         hideSensitive: link.hideSensitive,
         ownerName: store.displayName?.trim() || DEFAULT_OWNER_NAME,
         updatedAt: bundle.trip.updatedAt,
@@ -271,6 +282,52 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
         if (l.tripId === tripId) l.active = false;
       });
       return done(undefined);
+    },
+    async getBudget(tripId) {
+      if (!store.trips.some((t) => t.id === tripId)) throw new NotFoundError('Voyage introuvable');
+      return clone({
+        travelers: store.travelers.filter((x) => x.tripId === tripId).sort((a, b) => a.position - b.position),
+        lines: store.budgetLines.filter((x) => x.tripId === tripId).sort((a, b) => a.position - b.position),
+        expenses: store.expenses.filter((x) => x.tripId === tripId),
+      });
+    },
+    async saveTraveler(t) {
+      return done(upsert(store.travelers, t));
+    },
+    async deleteTraveler(id) {
+      const t = store.travelers.find((x) => x.id === id);
+      if (!t) return done(undefined);
+      if (store.travelers.filter((x) => x.tripId === t.tripId).length <= 1) throw new BudgetError('LAST_TRAVELER');
+      if (store.expenses.some((e) => e.paidBy === id || e.participantIds.includes(id))) throw new BudgetError('TRAVELER_IN_USE');
+      store.travelers = store.travelers.filter((x) => x.id !== id);
+      return done(undefined);
+    },
+    async saveBudgetLine(l) {
+      return done(upsert(store.budgetLines, l));
+    },
+    async deleteBudgetLine(id) {
+      store.budgetLines = store.budgetLines.filter((x) => x.id !== id);
+      store.expenses.forEach((e) => {
+        if (e.lineId === id) e.lineId = null;
+      });
+      return done(undefined);
+    },
+    async saveExpense(e) {
+      if (e.participantIds.length === 0) throw new BudgetError('NO_PARTICIPANT');
+      if (e.lineId && e.reservationId) throw new BudgetError('BOTH_LINKS');
+      return done(upsert(store.expenses, e));
+    },
+    async deleteExpense(id) {
+      store.expenses = store.expenses.filter((x) => x.id !== id);
+      return done(undefined);
+    },
+    async updateBudgetSettings(tripId, s) {
+      const trip = store.trips.find((t) => t.id === tripId);
+      if (!trip) throw new NotFoundError('Voyage introuvable');
+      trip.budgetCap = s.cap;
+      trip.budgetCapMode = s.capMode;
+      trip.fxMarginPct = s.fxMarginPct;
+      return done(clone(trip));
     },
     async getDisplayName() {
       return store.displayName ?? '';

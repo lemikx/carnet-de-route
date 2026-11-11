@@ -12,7 +12,7 @@ export default defineConfig({
     launchOptions: existsSync(localChromium) ? { executablePath: localChromium } : {},
   },
   webServer: {
-    command: 'VITE_DATA=memory npx vite build && npx vite preview --port 4173 --strictPort',
+    command: 'VITE_DATA=memory VITE_FX=fake npx vite build && npx vite preview --port 4173 --strictPort',
     url: 'http://localhost:4173/carnet-de-route/',
     reuseExistingServer: false,
     timeout: 180_000,

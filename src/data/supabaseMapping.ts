@@ -1,3 +1,4 @@
+import type { BudgetData, Expense } from '../domain/budget/types';
 import type { TripBundle } from '../domain/types';
 
 type Row = Record<string, unknown>;
@@ -32,4 +33,16 @@ export function rowsToBundle(json: Row): TripBundle {
     checklist: list('checklist'),
     contacts: list('contacts'),
   } as unknown as TripBundle;
+}
+
+/** JSON renvoyé par `get_my_budget` → données du budget. */
+export function budgetFromJson(json: Row): BudgetData {
+  const list = (k: string) => ((json[k] as Row[] | null) ?? []).map((r) => fromRow(r));
+  return { travelers: list('travelers'), lines: list('lines'), expenses: list('expenses') } as unknown as BudgetData;
+}
+
+/** Dépense de l'appli → arguments de la fonction `save_expense`. */
+export function expenseToRpc(e: Omit<Expense, 'id'> & { id?: string }): { expense: Row; participants: string[] } {
+  const { participantIds, ...rest } = e;
+  return { expense: toRow(rest), participants: participantIds };
 }
