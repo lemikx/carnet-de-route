@@ -25,7 +25,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - run: sudo apt-get update && sudo apt-get install -y postgresql
+      - name: PostgreSQL pour les tests de la base (3 essais si le réseau du serveur est instable)
+        run: |
+          if ! ls /usr/lib/postgresql/*/bin/postgres >/dev/null 2>&1; then
+            for i in 1 2 3; do
+              sudo apt-get update && sudo apt-get install -y postgresql && break
+              echo "Essai $i échoué, nouvel essai dans 20 s"; sleep 20
+            done
+          fi
+          ls -d /usr/lib/postgresql/*/bin
       - run: npm run test:db
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
