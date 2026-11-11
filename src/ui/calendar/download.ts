@@ -8,7 +8,12 @@ export function calendarHttpsUrl(supabaseUrl: string, token: string): string {
 }
 
 export function icsFilename(name: string): string {
-  const clean = name.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s*-\s*/g, ' - ').replace(/(\s-\s)+/g, ' - ').replace(/\s+/g, ' ').trim();
+  const clean = name
+    .replace(/[^\p{L}\p{N} ._-]+/gu, '-')
+    .replace(/\s*-[\s-]*/g, ' - ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s-]+|[\s-]+$/g, '')
+    .trim();
   return `${clean || 'voyage'}.ics`;
 }
 

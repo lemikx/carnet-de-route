@@ -120,10 +120,14 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
     return repo.getBundle(tripId);
   }
 
+  /** Position d'une nouvelle étape : dans l'ordre des heures, avant l'hébergement qui termine la journée. */
   function insertIndex(dayStops: Stop[], kind: Stop['kind'], startTime: string | null): number {
-    if (kind === 'lodging' || !startTime) return dayStops.length;
-    const i = dayStops.findIndex((s) => s.startTime !== null && s.startTime > startTime);
-    return i === -1 ? dayStops.length : i;
+    if (kind === 'lodging') return dayStops.length;
+    let end = dayStops.length;
+    while (end > 0 && dayStops[end - 1].kind === 'lodging') end--;
+    if (!startTime) return end;
+    const i = dayStops.slice(0, end).findIndex((s) => s.startTime !== null && s.startTime > startTime);
+    return i === -1 ? end : i;
   }
 
   async function insertStop(bundle: TripBundle, dayId: string, input: StopInput, index: number) {
@@ -198,8 +202,8 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
 
     async addStop(dayId, s) {
       const { tripId, bundle } = await tripIdOfDay(dayId);
-      const dayStops = bundle.stops.filter((x) => x.dayId === dayId);
-      await insertStop(bundle, dayId, s, dayStops.length);
+      const dayStops = bundle.stops.filter((x) => x.dayId === dayId).sort((a, b) => a.position - b.position);
+      await insertStop(bundle, dayId, s, insertIndex(dayStops, s.kind, s.startTime));
       return syncLegs(tripId);
     },
 

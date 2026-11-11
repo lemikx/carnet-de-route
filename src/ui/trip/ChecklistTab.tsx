@@ -33,14 +33,21 @@ export function ChecklistTab({ bundle, setBundle }: TripTabProps) {
   const { repo } = useApp();
   const online = useOnline();
   const action = useSave(useCallback(async (p: Promise<unknown>) => {
-    await p;
-    setBundle(await repo.getBundle(bundle.trip.id) as TripBundle);
+    try {
+      await p;
+    } finally {
+      // Relit l'état réel (annule l'affichage immédiat si l'enregistrement a échoué).
+      setBundle(await repo.getBundle(bundle.trip.id) as TripBundle);
+    }
   }, [repo, bundle.trip.id, setBundle]));
-  const disabled = !online || action.saving;
+  const disabled = !online;
   const { done, total } = checklistProgress(bundle.checklist);
   const now = today();
 
-  const save = (i: ChecklistItem) => action.run(repo.saveChecklistItem(i));
+  const save = (i: ChecklistItem) => {
+    setBundle({ ...bundle, checklist: bundle.checklist.map((x) => (x.id === i.id ? i : x)) });
+    return action.run(repo.saveChecklistItem(i));
+  };
   return (
     <div>
       <p><strong>{done}/{total} faits</strong></p>

@@ -38,4 +38,5 @@ describe('adresses calendrier', () => {
     expect(calendarFeedUrl('https://abc.supabase.co', 'f00')).toBe('webcal://abc.supabase.co/functions/v1/calendar?token=f00');
   });
   it('nettoie le nom de fichier', () => expect(icsFilename('Japon / Corée : 2026')).toBe('Japon - Corée - 2026.ics'));
+  it('remplace les symboles du nom de fichier', () => expect(icsFilename('Paris → Japon ✈️')).toBe('Paris - Japon.ics'));
 });

@@ -106,6 +106,18 @@ describe('TripService', () => {
     expect(r.days.find((d) => d.id === arrival.dayId)!.date).toBe('2026-12-02');
   });
 
+  it('range une nouvelle étape selon son heure, avant l’hébergement de la nuit', async () => {
+    const { service } = setup();
+    const b = await service.createTrip(tripInput());
+    const d = b.days.sort((x, y) => x.date.localeCompare(y.date))[0];
+    await service.addStop(d.id, stop('Hôtel', 35, 135.7, { kind: 'lodging', startTime: '15:00' }));
+    await service.addStop(d.id, stop('Musée', 35.01, 135.77, { startTime: '10:00' }));
+    await service.addStop(d.id, stop('Temple', 35.02, 135.78, { startTime: '09:00' }));
+    const r = await service.addStop(d.id, stop('Parc', 35.03, 135.79));
+    const order = r.stops.filter((s) => s.dayId === d.id).sort((x, y) => x.position - y.position).map((s) => s.title);
+    expect(order).toEqual(['Temple', 'Musée', 'Parc', 'Hôtel']);
+  });
+
   it('ne crée pas de lieu pour une réservation hors des dates du voyage', async () => {
     const { service } = setup();
     const b = await service.createTrip(tripInput());
