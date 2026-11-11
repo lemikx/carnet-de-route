@@ -1,5 +1,5 @@
 export function toCents(amount: number): number {
-  return Math.round(amount * 100 + Number.EPSILON * Math.sign(amount));
+  return Math.round(amount * 100);
 }
 
 /** Convertit une saisie française (« 1 200,50 », « 40,5 », « 12.5 ») ; `null` si invalide (négatif, plus de 2 décimales, texte). */
