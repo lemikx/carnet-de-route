@@ -41,7 +41,8 @@ export function planLegs(ordered: Stop[], legs: Leg[], defaultMode: TravelMode =
       continue;
     }
     if (!canAutoCompute(leg, from, to)) continue;
-    if (leg.durationMin === null || leg.fromKey !== coordKey(from.lat, from.lon) || leg.toKey !== coordKey(to.lat, to.lon)) {
+    const moved = leg.fromKey !== coordKey(from.lat, from.lon) || leg.toKey !== coordKey(to.lat, to.lon);
+    if (moved || (leg.durationMin === null && leg.error === null)) {
       plan.recompute.push(leg);
     }
   }

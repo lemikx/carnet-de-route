@@ -51,6 +51,14 @@ describe('planLegs', () => {
     expect(planLegs(orderedStops([d1], [a, b]), [leg]).recompute).toEqual([leg]);
   });
 
+  it('ne recalcule pas en boucle un trajet en erreur si les adresses n’ont pas changé', () => {
+    const a = makeStop({ id: 'A', position: 0 });
+    const b = makeStop({ id: 'B', position: 1 });
+    const keys = { fromKey: coordKey(a.lat, a.lon), toKey: coordKey(b.lat, b.lon) };
+    const failed = makeLeg(a, b, { ...keys, error: 'Aucun trajet routier possible' });
+    expect(planLegs(orderedStops([d1], [a, b]), [failed]).recompute).toEqual([]);
+  });
+
   it('ne calcule pas un trajet vers un lieu sans coordonnées', () => {
     const a = makeStop({ id: 'A', position: 0 });
     const b = makeStop({ id: 'B', position: 1, lat: null, lon: null });
