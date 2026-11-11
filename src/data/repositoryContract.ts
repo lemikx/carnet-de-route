@@ -101,6 +101,15 @@ export function runRepositoryContract(name: string, make: () => Promise<TripRepo
       expect(await repo.getSharedRoadbook('0'.repeat(32))).toBeNull();
     });
 
+    it('affiche le nom choisi sur le roadbook partagé, jamais une adresse e-mail', async () => {
+      const { repo, trip } = await setup();
+      const link = await repo.createShareLink(trip.id, true);
+      expect((await repo.getSharedRoadbook(link.token))?.ownerName).toBe('Voyageur');
+      await repo.setDisplayName('lemikxfamily');
+      expect(await repo.getDisplayName()).toBe('lemikxfamily');
+      expect((await repo.getSharedRoadbook(link.token))?.ownerName).toBe('lemikxfamily');
+    });
+
     it('n’affiche plus le roadbook partagé d’un voyage supprimé', async () => {
       const { repo, trip } = await setup();
       const link = await repo.createShareLink(trip.id, true);

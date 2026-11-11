@@ -202,7 +202,7 @@ Une page de l'appli, et la même page mise en forme pour l'impression ou le PDF.
 - Option « Masquer les infos sensibles », **activée par défaut** : numéros de confirmation, prix, liens de réservation et notes personnelles sont retirés. Adresses, horaires, trajets et cartes restent visibles.
 - « Désactiver le lien » coupe l'accès immédiatement ; « Nouveau lien » remplace l'ancien.
 - Avertissement affiché à la création : « Toute personne qui a ce lien peut voir ton itinéraire, tes hébergements et tes dates. »
-- Côté famille, la page affiche en haut : « Roadbook partagé par … — mis à jour le … ».
+- Côté famille, la page affiche en haut : « Roadbook partagé par {nom affiché} — mis à jour le … ». Le nom affiché se choisit dans Réglages (ex. « lemikxfamily ») ; à défaut « Voyageur ». Jamais l'adresse e-mail ni aucun identifiant de compte.
 
 ### 5.9 Export calendrier
 Bouton « Calendrier » sur la page du voyage, avec deux choix.

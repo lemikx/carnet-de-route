@@ -19,7 +19,7 @@ select pg_temp.ok((select token ~ '^[0-9a-f]{32}$' from t_links), 'jeton de 32 c
 
 set local role anon;
 set local request.jwt.claim.sub = '';
-select pg_temp.ok((select get_shared_roadbook(token) from t_links) ->> 'owner_name' = 'alice', 'anon lit le roadbook partagé');
+select pg_temp.ok((select get_shared_roadbook(token) from t_links) ->> 'owner_name' = 'Voyageur', 'anon lit le roadbook partagé');
 select pg_temp.ok((select (get_shared_roadbook(token) -> 'trip' ->> 'name') from t_links) = 'Japon', 'voyage du lien');
 select pg_temp.ok(position('SECRET' in (select get_shared_roadbook(token)::text from t_links)) = 0, 'aucune info sensible quand masqué');
 select pg_temp.ok(position('4242' in (select get_shared_roadbook(token)::text from t_links)) = 0, 'prix masqué');

@@ -109,6 +109,8 @@ Sur GitHub, dans le dépôt `carnet-de-route` :
 
 Connecte-toi avec ton e-mail sur chaque appareil (lien reçu par e-mail, à ouvrir **sur l'appareil où tu te connectes**).
 
+Puis dans **Réglages → Nom affiché sur les roadbooks partagés**, saisis `lemikxfamily` et enregistre : c'est le nom que verra ta famille.
+
 ## 9. Vérifications à faire une fois (5 minutes)
 
 - [ ] Créer un voyage sur le Mac → il apparaît sur l'iPhone.

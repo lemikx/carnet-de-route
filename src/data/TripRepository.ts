@@ -63,4 +63,9 @@ export interface TripRepository {
   createCalendarLink(tripId: string, opts: CalendarOptions): Promise<CalendarLink>;
   updateCalendarOptions(tripId: string, opts: CalendarOptions): Promise<CalendarLink>;
   revokeCalendarLink(tripId: string): Promise<void>;
+  /** Nom affiché sur les roadbooks partagés (jamais l'adresse e-mail). */
+  getDisplayName(): Promise<string>;
+  setDisplayName(name: string): Promise<void>;
 }
+
+export const DEFAULT_OWNER_NAME = 'Voyageur';

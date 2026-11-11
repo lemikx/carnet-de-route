@@ -27,17 +27,10 @@ export function createSupabaseRepository(client: SupabaseClient): TripRepository
       return (check(await client.from('trips').select('*').order('start_date')) as Row[]).map((r) => fromRow<Trip>(r));
     },
     async getBundle(tripId) {
-      const trip = check(await client.from('trips').select('*').eq('id', tripId).maybeSingle()) as Row | null;
-      if (!trip) throw new NotFoundError('Voyage introuvable');
-      const days = check(await client.from('days').select('*').eq('trip_id', tripId)) as Row[];
-      const dayIds = days.map((d) => d.id as string);
-      const stops = dayIds.length ? (check(await client.from('stops').select('*').in('day_id', dayIds)) as Row[]) : [];
-      const stopIds = stops.map((s) => s.id as string);
-      const legs = stopIds.length ? (check(await client.from('legs').select('*').in('from_stop_id', stopIds)) as Row[]) : [];
-      const [reservations, checklist, contacts] = await Promise.all(
-        ['reservations', 'checklist_items', 'contacts'].map(async (t) => check(await client.from(t).select('*').eq('trip_id', tripId)) as Row[]),
-      );
-      return rowsToBundle({ trip, days, stops, legs, reservations, checklist, contacts }) as TripBundle;
+      // Un seul appel, quelle que soit la taille du voyage (pas de liste d'identifiants dans l'URL).
+      const json = check(await client.rpc('get_my_trip_bundle', { p_trip: tripId })) as Row | null;
+      if (!json || !json.trip) throw new NotFoundError('Voyage introuvable');
+      return rowsToBundle(json) as TripBundle;
     },
     createTrip: (t) => save<Trip>('trips', t),
     updateTrip: (t) => save<Trip>('trips', t),
@@ -106,6 +99,13 @@ export function createSupabaseRepository(client: SupabaseClient): TripRepository
     },
     async revokeCalendarLink(tripId) {
       check(await client.from('calendar_links').update({ active: false, revoked_at: new Date().toISOString() }).eq('trip_id', tripId).eq('active', true));
+    },
+    async getDisplayName() {
+      const r = check(await client.from('profiles').select('display_name').maybeSingle()) as Row | null;
+      return String(r?.display_name ?? '');
+    },
+    async setDisplayName(name) {
+      check(await client.from('profiles').upsert({ display_name: name.trim().slice(0, 60) }));
     },
   };
 }

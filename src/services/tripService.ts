@@ -2,7 +2,7 @@ import { DEFAULT_CHECKLIST } from '../domain/checklist';
 import { datesBetween, diffDays } from '../domain/days';
 import { canAutoCompute, orderedStops, planLegs } from '../domain/legs';
 import { reservationToStops } from '../domain/reservations';
-import { coordKey } from '../domain/time';
+import { coordKey, toInstant } from '../domain/time';
 import {
   AUTO_MODES, type Day, type Leg, type Reservation, type Stop, type TravelMode, type Trip, type TripBundle,
 } from '../domain/types';
@@ -120,13 +120,16 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
     return repo.getBundle(tripId);
   }
 
-  /** Position d'une nouvelle étape : dans l'ordre des heures, avant l'hébergement qui termine la journée. */
-  function insertIndex(dayStops: Stop[], kind: Stop['kind'], startTime: string | null): number {
-    if (kind === 'lodging') return dayStops.length;
+  /** Position d'une nouvelle étape : dans l'ordre des heures réelles (fuseaux compris), avant l'hébergement qui termine la journée. */
+  function insertIndex(dayStops: Stop[], date: string, stop: Pick<Stop, 'kind' | 'startTime' | 'timezone'>): number {
+    if (stop.kind === 'lodging') return dayStops.length;
     let end = dayStops.length;
     while (end > 0 && dayStops[end - 1].kind === 'lodging') end--;
-    if (!startTime) return end;
-    const i = dayStops.slice(0, end).findIndex((s) => s.startTime !== null && s.startTime > startTime);
+    if (!stop.startTime) return end;
+    const at = toInstant({ date, time: stop.startTime, timezone: stop.timezone });
+    const i = dayStops
+      .slice(0, end)
+      .findIndex((s) => s.startTime !== null && toInstant({ date, time: s.startTime, timezone: s.timezone }) > at);
     return i === -1 ? end : i;
   }
 
@@ -203,7 +206,8 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
     async addStop(dayId, s) {
       const { tripId, bundle } = await tripIdOfDay(dayId);
       const dayStops = bundle.stops.filter((x) => x.dayId === dayId).sort((a, b) => a.position - b.position);
-      await insertStop(bundle, dayId, s, insertIndex(dayStops, s.kind, s.startTime));
+      const date = bundle.days.find((d) => d.id === dayId)!.date;
+      await insertStop(bundle, dayId, s, insertIndex(dayStops, date, s));
       return syncLegs(tripId);
     },
 
@@ -274,7 +278,7 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
         }
         if (!current) {
           const dayStops = bundle.stops.filter((s) => s.dayId === day.id).sort((a, b) => a.position - b.position);
-          await insertStop(bundle, day.id, input, insertIndex(dayStops, input.kind, input.startTime));
+          await insertStop(bundle, day.id, input, insertIndex(dayStops, day.date, input));
           continue;
         }
         const updated: Stop = {
@@ -291,7 +295,7 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
           const target = bundle.stops.filter((s) => s.dayId === day.id).sort((a, b) => a.position - b.position);
           await repo.saveStop({ ...updated, dayId: day.id, position: target.length });
           const ids = target.map((s) => s.id);
-          ids.splice(insertIndex(target, updated.kind, updated.startTime), 0, current.id);
+          ids.splice(insertIndex(target, day.date, updated), 0, current.id);
           await repo.reorderStops(day.id, ids);
         }
       }

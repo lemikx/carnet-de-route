@@ -147,6 +147,17 @@ describe('TripService', () => {
     expect(d1.id).not.toBe(d2.id);
   });
 
+  it('range les étapes selon l’heure réelle quand les fuseaux diffèrent', async () => {
+    const { service } = setup();
+    const b = await service.createTrip(tripInput());
+    const d = b.days.sort((x, y) => x.date.localeCompare(y.date))[0];
+    // 10:00 à Tokyo = 01:00 UTC ; 09:00 à Paris = 08:00 UTC : Paris vient après Tokyo malgré « 09:00 » < « 10:00 ».
+    await service.addStop(d.id, stop('Tokyo', 35.68, 139.65, { startTime: '10:00', timezone: 'Asia/Tokyo' }));
+    const r = await service.addStop(d.id, stop('Paris', 48.86, 2.35, { startTime: '09:00', timezone: 'Europe/Paris' }));
+    const order = r.stops.filter((s) => s.dayId === d.id).sort((x, y) => x.position - y.position).map((s) => s.title);
+    expect(order).toEqual(['Tokyo', 'Paris']);
+  });
+
   it('ne crée pas de lieu pour une réservation hors des dates du voyage', async () => {
     const { service } = setup();
     const b = await service.createTrip(tripInput());

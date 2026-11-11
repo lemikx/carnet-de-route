@@ -9,7 +9,7 @@ export interface KeyValueStore {
 export const idbStore: KeyValueStore = { get: (k) => idbGet(k), set: (k, v) => idbSet(k, v) };
 
 const READS = { listTrips: () => 'trips', getBundle: (id: string) => `bundle:${id}`, getSharedRoadbook: (t: string) => `shared:${t}` } as const;
-const OPTIONAL_READS = new Set(['getShareLink', 'getCalendarLink']);
+const OPTIONAL_READS: Record<string, unknown> = { getShareLink: null, getCalendarLink: null, getDisplayName: '' };
 
 /** Enveloppe un dépôt : lectures mises en cache, écritures refusées hors ligne. */
 export function createCachedRepository(inner: TripRepository, isOnline: () => boolean, store: KeyValueStore = idbStore): TripRepository {
@@ -44,8 +44,8 @@ export function createCachedRepository(inner: TripRepository, isOnline: () => bo
           return cached;
         };
       }
-      if (OPTIONAL_READS.has(prop)) {
-        return async (...args: unknown[]) => (isOnline() ? fn.apply(target, args) : null);
+      if (prop in OPTIONAL_READS) {
+        return async (...args: unknown[]) => (isOnline() ? fn.apply(target, args) : OPTIONAL_READS[prop]);
       }
       return async (...args: unknown[]) => {
         if (!isOnline()) throw new OfflineError();

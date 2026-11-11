@@ -2,7 +2,7 @@ import { stripSensitive } from '../domain/roadbook';
 import type {
   ChecklistItem, Contact, Day, Leg, Reservation, ShareLink, Stop, Trip, TripBundle,
 } from '../domain/types';
-import { NotFoundError, type CalendarLink, type New, type TripRepository } from './TripRepository';
+import { DEFAULT_OWNER_NAME, NotFoundError, type CalendarLink, type New, type TripRepository } from './TripRepository';
 
 interface Store {
   trips: Trip[];
@@ -14,6 +14,7 @@ interface Store {
   contacts: Contact[];
   shareLinks: ShareLink[];
   calendarLinks: CalendarLink[];
+  displayName?: string;
 }
 
 export interface KeyStorage {
@@ -37,7 +38,7 @@ function emptyStore(): Store {
   return { trips: [], days: [], stops: [], legs: [], reservations: [], checklist: [], contacts: [], shareLinks: [], calendarLinks: [] };
 }
 
-export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: KeyStorage; ownerName?: string } = {}): TripRepository {
+export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: KeyStorage } = {}): TripRepository {
   let store: Store = emptyStore();
   try {
     const raw = opts.storage?.getItem(STORAGE_KEY);
@@ -244,7 +245,7 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
       return {
         bundle: link.hideSensitive ? stripSensitive(bundle) : bundle,
         hideSensitive: link.hideSensitive,
-        ownerName: opts.ownerName ?? 'Moi',
+        ownerName: store.displayName?.trim() || DEFAULT_OWNER_NAME,
         updatedAt: bundle.trip.updatedAt,
       };
     },
@@ -269,6 +270,13 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
       store.calendarLinks.forEach((l) => {
         if (l.tripId === tripId) l.active = false;
       });
+      return done(undefined);
+    },
+    async getDisplayName() {
+      return store.displayName ?? '';
+    },
+    async setDisplayName(name) {
+      store.displayName = name.trim().slice(0, 60);
       return done(undefined);
     },
   };

@@ -89,7 +89,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const repo = createCachedRepository(createSupabaseRepository(supabase), isOnlineNow);
       return { supabase, routing, repo };
     }
-    const repo = createCachedRepository(createMemoryRepository({ storage: safeStorage(), ownerName: 'Moi' }), isOnlineNow);
+    const repo = createCachedRepository(createMemoryRepository({ storage: safeStorage() }), isOnlineNow);
     return { supabase: null, routing: createFakeRouting(), repo };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, supabaseUrl]);
