@@ -4,9 +4,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PGBIN=${PGBIN:-/usr/lib/postgresql/16/bin}
-if [ ! -x "$PGBIN/postgres" ]; then
-  echo "PostgreSQL 16 introuvable ($PGBIN). Installe-le (apt install postgresql-16) ou indique PGBIN=…" >&2
+# Version de PostgreSQL la plus récente installée (16 ou plus), sauf si PGBIN est indiqué.
+if [ -z "${PGBIN:-}" ]; then
+  PGBIN=$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1 || true)
+fi
+if [ -z "${PGBIN:-}" ] || [ ! -x "$PGBIN/postgres" ]; then
+  echo "PostgreSQL introuvable (${PGBIN:-aucun dans /usr/lib/postgresql}). Installe-le (apt install postgresql) ou indique PGBIN=…" >&2
   exit 1
 fi
 
