@@ -3,6 +3,7 @@ import { useApp } from '../../app/AppContext';
 import { useOnline } from '../../offline/useOnline';
 import type { AiDraft } from '../../ai/types';
 import { useAsync } from '../common/useAsync';
+import { ControlPanel } from './ControlPanel';
 import { IdeasPanel } from './IdeasPanel';
 import { RequestPanel } from './RequestPanel';
 
@@ -48,6 +49,8 @@ export function DraftPage() {
       {d.stage === 'ideas_received' && (
         <IdeasPanel draft={d} today={today()} disabled={!online} onChoose={(id) => void ai.chooseIdea(d.id, id).then(reload)} />
       )}
+      {d.stage === 'itinerary_received' && <ControlPanel draft={d} today={today()} onCreate={(p) => ai.create(d.id, p)} />}
+      {d.stage === 'created' && d.tripId && <p><Link className="btn btn-primary" to={`/voyage/${d.tripId}/itineraire`}>Ouvrir le voyage</Link></p>}
     </main>
   );
 }

@@ -5,6 +5,7 @@ import { formatDate, formatDayLabel } from '../../domain/format';
 import type { Day, Trip } from '../../domain/types';
 import { NeedsConfirmationError } from '../../services/tripService';
 import { useOnline } from '../../offline/useOnline';
+import { DraftsList } from '../ai/DraftsList';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { SaveError } from '../common/SaveError';
 import { useAsync } from '../common/useAsync';
@@ -18,6 +19,7 @@ export function TripsPage() {
   const online = useOnline();
   const navigate = useNavigate();
   const trips = useAsync(() => repo.listTrips(), [repo]);
+  const drafts = useAsync(() => repo.listDrafts().catch(() => []), [repo]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Trip | null>(null);
   const [deleting, setDeleting] = useState<Trip | null>(null);
@@ -93,6 +95,8 @@ export function TripsPage() {
           <SaveError error={create.error} onRetry={create.retry} />
         </>
       )}
+
+      <DraftsList drafts={drafts.data ?? []} onDelete={(id) => void repo.deleteDraft(id).then(() => drafts.reload())} />
 
       {trips.loading && !trips.data && <p className="muted">Chargement…</p>}
       {Boolean(trips.error) && <p role="alert" className="save-error">Impossible de charger tes voyages.</p>}
