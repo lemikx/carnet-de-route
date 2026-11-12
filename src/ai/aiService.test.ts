@@ -79,7 +79,6 @@ describe('aiService', () => {
     await expect(ai.receiveItinerary(d.id, asReply(ITINERARY_FIXTURE))).rejects.toThrow('pas disponible');
     await ai.receiveIdeas(d.id, asReply(IDEAS_FIXTURE));
     await expect(ai.chooseIdea(d.id, 'inconnue')).rejects.toThrow();
-    await expect(ai.buildRequest(d.id)).rejects.toThrow('pas disponible');
   });
 
   it('échec de création : brouillon intact, aucun voyage, réessai = un seul voyage', async () => {
@@ -108,5 +107,33 @@ describe('aiService', () => {
     const d = await mk(a).startDraft(brief());
     const b = createMemoryRepository({ storage });
     expect((await b.listDrafts()).map((x) => x.id)).toEqual([d.id]);
+  });
+
+  it('I2 : si l’enregistrement final du brouillon échoue, le voyage est retiré (pas de doublon au réessai)', async () => {
+    let fail = true;
+    const { base, ai } = make((r) => ({ ...r, saveDraft: async (d) => { if (fail && 'stage' in d && d.stage === 'created') throw new Error('panne'); return r.saveDraft(d); } }));
+    const d = await ai.startDraft(brief({ destination: 'Kyoto' }));
+    await ai.buildRequest(d.id);
+    await ai.receiveItinerary(d.id, asReply(ITINERARY_FIXTURE));
+    await expect(ai.create(d.id)).rejects.toThrow();
+    expect(await base.listTrips()).toEqual([]);
+    fail = false;
+    await ai.create(d.id);
+    expect(await base.listTrips()).toHaveLength(1);
+  });
+
+  it('I5 : on peut redemander la demande pour recoller une autre réponse', async () => {
+    const { repo, ai } = make();
+    const d = await ai.startDraft(brief());
+    await ai.buildRequest(d.id);
+    await ai.receiveIdeas(d.id, asReply(IDEAS_FIXTURE));
+    expect((await ai.buildRequest(d.id)).kind).toBe('ideas');
+    expect((await repo.getDraft(d.id)).stage).toBe('ideas_requested');
+    await ai.receiveIdeas(d.id, asReply(IDEAS_FIXTURE));
+    await ai.chooseIdea(d.id, 'kyoto');
+    await ai.buildRequest(d.id);
+    await ai.receiveItinerary(d.id, asReply(ITINERARY_FIXTURE));
+    expect((await ai.buildRequest(d.id)).kind).toBe('itinerary');
+    expect((await repo.getDraft(d.id)).stage).toBe('itinerary_requested');
   });
 });

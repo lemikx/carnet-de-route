@@ -4,7 +4,7 @@ import { VisaBadge } from './VisaBadge';
 
 const ORDER: Record<VisaLevel, number> = { green: 0, orange: 1, grey: 2, red: 3 };
 
-export function IdeasPanel({ draft, today, onChoose, disabled }: { draft: AiDraft; today: string; onChoose(ideaId: string): void; disabled?: boolean }) {
+export function IdeasPanel({ draft, today, onChoose, onRepaste, disabled }: { draft: AiDraft; today: string; onChoose(ideaId: string): void; onRepaste?(): void; disabled?: boolean }) {
   const ranked = (draft.ideas ?? [])
     .map((idea, i) => ({ idea, i, level: assessVisa(idea.visa, { departureDate: draft.brief.startDate, today }).level }))
     .sort((a, b) => ORDER[a.level] - ORDER[b.level] || a.i - b.i);
@@ -24,6 +24,7 @@ export function IdeasPanel({ draft, today, onChoose, disabled }: { draft: AiDraf
           </li>
         ))}
       </ul>
+      {onRepaste && <button type="button" className="btn" disabled={disabled} onClick={onRepaste}>Recoller une autre réponse</button>}
     </section>
   );
 }

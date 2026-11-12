@@ -21,7 +21,7 @@ describe('IdeasPanel', () => {
     expect(heads[2]).toContain('Lagos');
     const last = screen.getAllByRole('listitem').filter((li) => li.classList.contains('idea-card')).pop()!;
     expect(last).toHaveClass('muted');
-    expect(within(last).getByText(/Délai de traitement jusqu'à 4000 jours/)).toBeInTheDocument();
+    expect(within(last).getByText(/Délai de traitement jusqu'à 3000 jours/)).toBeInTheDocument();
   });
   it('« Choisir cette idée » renvoie le bon id', async () => {
     const onChoose = vi.fn();
@@ -36,5 +36,12 @@ describe('IdeasPanel', () => {
     const { container } = render(<IdeasPanel draft={draft(ideas)} today="2026-11-12" onChoose={() => {}} />);
     expect(container.querySelector('img')).toBeNull();
     expect(screen.getByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
+  });
+
+  it('I5 : permet de recoller une autre réponse', async () => {
+    const onRepaste = vi.fn();
+    render(<IdeasPanel draft={draft()} today="2026-11-12" onChoose={() => {}} onRepaste={onRepaste} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Recoller une autre réponse' }));
+    expect(onRepaste).toHaveBeenCalled();
   });
 });

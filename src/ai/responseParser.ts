@@ -6,22 +6,28 @@ export type ParseResult<T> =
   | { ok: true; value: T; warnings: string[] }
   | { ok: false; errors: string[]; truncated: boolean };
 
-/** Cherche le bloc JSON : balise ```json d'abord, sinon premier objet équilibré portant « v ». */
+const hasV = (c: string) => {
+  try { const o = JSON.parse(c); return typeof o === 'object' && o !== null && 'v' in o; } catch { return false; }
+};
+
+/** Cherche le bloc JSON : balises ```json (la première qui s'analyse), sinon premier objet équilibré portant « v ». */
 export function extractJson(text: string): { json: string } | { truncated: true } | null {
-  const fence = /```(?:json)?[ \t]*\r?\n?/i.exec(text);
-  if (fence && /```json/i.test(text)) {
-    const start = text.search(/```json/i);
-    const afterOpen = text.indexOf('\n', start);
-    const body = afterOpen === -1 ? '' : text.slice(afterOpen + 1);
-    const end = body.indexOf('```');
-    if (end === -1) return body.trim() ? { truncated: true } : null;
-    return { json: body.slice(0, end).trim() };
+  // Contenu de chaque balise ```json : jusqu'au prochain ``` (fermeture ou balise suivante), sinon jusqu'à la fin.
+  const fenced: { json: string; closed: boolean }[] = [];
+  const open = /```json/gi;
+  for (let m = open.exec(text); m; m = open.exec(text)) {
+    const start = m.index + m[0].length;
+    const end = text.indexOf('```', start);
+    fenced.push({ json: text.slice(start, end === -1 ? undefined : end).trim(), closed: end !== -1 });
   }
+  const good = fenced.find((f) => hasV(f.json));
+  if (good) return { json: good.json };
+
   const candidates: string[] = [];
-  let i = 0;
-  let sawUnclosed = false;
-  while (i < text.length) {
-    if (text[i] !== '{') { i++; continue; }
+  let unclosed = false;
+  let failures = 0;
+  let i = text.indexOf('{');
+  while (i !== -1) {
     let depth = 0;
     let inStr = false;
     let esc = false;
@@ -36,16 +42,21 @@ export function extractJson(text: string): { json: string } | { truncated: true 
       else if (c === '{') depth++;
       else if (c === '}') { depth--; if (depth === 0) break; }
     }
-    if (depth !== 0) { sawUnclosed = true; break; }
+    if (depth !== 0) {
+      unclosed = true;
+      // Une accolade isolée peut précéder le vrai JSON : on réessaie plus loin, sans s'enliser.
+      if (++failures >= 50) break;
+      i = text.indexOf('{', i + 1);
+      continue;
+    }
     candidates.push(text.slice(i, j + 1));
-    i = j + 1;
+    i = text.indexOf('{', j + 1);
   }
-  const withV = candidates.find((c) => {
-    try { const o = JSON.parse(c); return typeof o === 'object' && o !== null && 'v' in o; } catch { return false; }
-  });
+  const withV = candidates.find(hasV);
   if (withV) return { json: withV };
-  if (sawUnclosed) return { truncated: true };
-  if (candidates.length) return { json: candidates.reduce((a, b) => (b.length > a.length ? b : a)) };
+  if (unclosed) return { truncated: true };
+  if (fenced.length && fenced[0].json) return { json: fenced[0].json };
+  if (candidates.length) return { json: candidates.reduce((x, y) => (y.length > x.length ? y : x)) };
   return null;
 }
 

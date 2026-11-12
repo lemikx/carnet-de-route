@@ -112,4 +112,14 @@ describe('createTripFromItinerary', () => {
     await createTripFromItinerary(deps, { brief, itinerary: itin(), resolved: Array(5).fill(ok()) });
     expect(await base.listTrips()).toHaveLength(1);
   });
+
+  it('I2 : si le nettoyage échoue aussi, le message le dit', async () => {
+    const { deps } = setup((r) => ({
+      ...r,
+      saveStop: async () => { throw new Error('panne'); },
+      deleteTrip: async () => { throw new Error('réseau coupé'); },
+    }));
+    await expect(createTripFromItinerary(deps, { brief, itinerary: itin(), resolved: Array(5).fill(ok()) }))
+      .rejects.toThrow(/incomplet/);
+  });
 });

@@ -44,4 +44,14 @@ describe('ControlPanel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
     await waitFor(() => expect(screen.getByRole('link', { name: 'Ouvrir le voyage' })).toBeInTheDocument());
   });
+
+  it('I5 : recoller une autre réponse ; I2 : message distinct si le nettoyage a échoué', async () => {
+    const onRepaste = vi.fn();
+    const { CreationError } = await import('../../ai/tripFromItinerary');
+    render(<MemoryRouter><ControlPanel draft={draft()} today="2026-11-12" onRepaste={onRepaste} onCreate={async () => { throw new CreationError('voyage incomplet peut-être resté'); }} /></MemoryRouter>);
+    await userEvent.click(screen.getByRole('button', { name: 'Recoller une autre réponse' }));
+    expect(onRepaste).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Créer le voyage' }));
+    expect(await screen.findByText('voyage incomplet peut-être resté')).toBeInTheDocument();
+  });
 });

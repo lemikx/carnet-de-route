@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CreationError } from '../../ai/tripFromItinerary';
 import { assessVisa } from '../../ai/visa';
 import type { AiDraft } from '../../ai/types';
 import { datesBetween } from '../../domain/days';
@@ -12,15 +13,17 @@ interface Created { tripId: string; toVerify: number; skippedBudgetLines: number
 const MULTIPLIER = { fixed: () => 1, per_person: (n: number) => n, per_day: (_n: number, d: number) => d, per_person_per_day: (n: number, d: number) => n * d };
 
 export function ControlPanel({
-  draft, today, onCreate,
+  draft, today, onCreate, onRepaste,
 }: {
   draft: AiDraft;
   today: string;
   onCreate(onProgress: (done: number, total: number) => void): Promise<Created>;
+  onRepaste?(): void;
 }) {
   const online = useOnline();
   const [progress, setProgress] = useState<[number, number] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [failMessage, setFailMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<Created | null>(null);
   const it = draft.itinerary;
@@ -39,8 +42,9 @@ export function ControlPanel({
     setProgress(null);
     try {
       setCreated(await onCreate((d, t) => setProgress([d, t])));
-    } catch {
+    } catch (e) {
       setFailed(true);
+      setFailMessage(e instanceof CreationError ? e.message : null);
     } finally {
       setBusy(false);
     }
@@ -71,6 +75,7 @@ export function ControlPanel({
         {estimate > 0 && <li>Budget estimé (lignes en euros) : {formatEur(Math.round(estimate * 100))}</li>}
       </ul>
       <button type="button" className="btn btn-primary" disabled={busy || !online} onClick={() => void create()}>Créer le voyage</button>
+      {onRepaste && <button type="button" className="btn" disabled={busy || !online} onClick={onRepaste}>Recoller une autre réponse</button>}
       {busy && (
         <p aria-live="polite">
           Placement des lieux{progress ? ` : ${progress[0]} / ${progress[1]}` : '…'} <progress value={progress?.[0] ?? 0} max={progress?.[1] ?? 1} />
@@ -78,8 +83,8 @@ export function ControlPanel({
       )}
       {failed && (
         <div role="alert" className="save-error">
-          <span>La création a échoué : rien n’a été enregistré.</span>
-          <button type="button" className="btn btn-small" onClick={() => void create()}>Réessayer</button>
+          <span>{failMessage ?? 'La création a échoué : rien n’a été enregistré.'}</span>
+          <button type="button" className="btn btn-small" disabled={!online} onClick={() => void create()}>Réessayer</button>
         </div>
       )}
     </section>

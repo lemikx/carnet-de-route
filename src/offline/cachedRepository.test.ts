@@ -78,4 +78,19 @@ describe('budget hors ligne', () => {
     expect(await repo.getBudget(t.id)).toEqual(before);
     await expect(repo.saveTraveler({ tripId: t.id, name: 'Bob', position: 1 })).rejects.toBeInstanceOf(OfflineError);
   });
+
+  it('relit hors ligne les brouillons déjà consultés', async () => {
+    let online = true;
+    const repo = createCachedRepository(createMemoryRepository(), () => online, mapStore());
+    const d = await repo.saveDraft({
+      stage: 'brief', mode: 'known', ideas: null, chosenIdeaId: null, itinerary: null, tripId: null, protocolVersion: 1, updatedAt: '',
+      brief: { destination: 'Kyoto', startDate: '2030-03-01', endDate: '2030-03-03', departureCity: null, adults: 1, children: 0, travelers: [], budgetPerPersonEur: null, travelerTypes: [], tripTypes: [], wishes: [], lodging: [], pace: null, constraints: '' },
+    });
+    const list = await repo.listDrafts();
+    const one = await repo.getDraft(d.id);
+    online = false;
+    expect(await repo.listDrafts()).toEqual(list);
+    expect(await repo.getDraft(d.id)).toEqual(one);
+    await expect(repo.deleteDraft(d.id)).rejects.toBeInstanceOf(OfflineError);
+  });
 });

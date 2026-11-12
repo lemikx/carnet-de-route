@@ -20,6 +20,12 @@ export function TripsPage() {
   const navigate = useNavigate();
   const trips = useAsync(() => repo.listTrips(), [repo]);
   const drafts = useAsync(() => repo.listDrafts().catch(() => []), [repo]);
+  const removeDraft = useSave(
+    useCallback(async (id: string) => {
+      await repo.deleteDraft(id);
+      await drafts.reload();
+    }, [repo, drafts]),
+  );
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Trip | null>(null);
   const [deleting, setDeleting] = useState<Trip | null>(null);
@@ -96,7 +102,8 @@ export function TripsPage() {
         </>
       )}
 
-      <DraftsList drafts={drafts.data ?? []} onDelete={(id) => void repo.deleteDraft(id).then(() => drafts.reload())} />
+      <DraftsList drafts={drafts.data ?? []} onDelete={(id) => void removeDraft.run(id)} />
+      <SaveError error={removeDraft.error} onRetry={removeDraft.retry} />
 
       {trips.loading && !trips.data && <p className="muted">Chargement…</p>}
       {Boolean(trips.error) && <p role="alert" className="save-error">Impossible de charger tes voyages.</p>}

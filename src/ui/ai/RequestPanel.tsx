@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { buildContinuePrompt } from '../../ai/promptBuilder';
 import type { ParseResult } from '../../ai/responseParser';
+import { useOnline } from '../../offline/useOnline';
 import { CopyButton } from '../common/CopyButton';
+import { SaveError } from '../common/SaveError';
 
 export function RequestPanel({
   kind, prompt, openUrl, onPaste,
@@ -12,14 +14,19 @@ export function RequestPanel({
   onPaste(text: string): Promise<ParseResult<unknown>>;
 }) {
   const [text, setText] = useState('');
+  const online = useOnline();
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [result, setResult] = useState<ParseResult<unknown> | null>(null);
   const cont = buildContinuePrompt();
 
   async function analyse() {
     setBusy(true);
+    setSaveError(null);
     try {
       setResult(await onPaste(text));
+    } catch {
+      setSaveError('Enregistrement impossible.');
     } finally {
       setBusy(false);
     }
@@ -38,8 +45,9 @@ export function RequestPanel({
       <label className="field">Réponse de Claude
         <textarea rows={8} value={text} onChange={(e) => setText(e.target.value)} />
       </label>
-      <button type="button" className="btn btn-primary" disabled={busy || !text.trim()} onClick={() => void analyse()}>Analyser la réponse</button>
+      <button type="button" className="btn btn-primary" disabled={busy || !online || !text.trim()} onClick={() => void analyse()}>Analyser la réponse</button>
 
+      <SaveError error={saveError} onRetry={() => void analyse()} />
       {result && !result.ok && (
         <div role="alert" className="save-error">
           <ul>{result.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>

@@ -124,7 +124,11 @@ export async function createTripFromItinerary(
     return { tripId, toVerify, skippedBudgetLines: skipped };
   } catch (e) {
     if (tripId) {
-      try { await repo.deleteTrip(tripId); } catch { /* le nettoyage échoue aussi : rien de plus à faire ici */ }
+      try {
+        await repo.deleteTrip(tripId);
+      } catch {
+        throw new CreationError('La création a échoué et un voyage incomplet est peut-être resté : vérifie « Mes voyages » et supprime-le.', e);
+      }
     }
     throw new CreationError('La création a échoué : rien n’a été enregistré.', e);
   }

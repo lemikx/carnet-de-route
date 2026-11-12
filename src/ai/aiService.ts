@@ -6,7 +6,7 @@ import type { TripService } from '../services/tripService';
 import { resolvePlaces } from './placeResolver';
 import { buildIdeasPrompt, buildItineraryPrompt, openInClaudeUrl } from './promptBuilder';
 import { parseIdeas, parseItinerary, type ParseResult } from './responseParser';
-import { createTripFromItinerary, type CreationResult } from './tripFromItinerary';
+import { CreationError, createTripFromItinerary, type CreationResult } from './tripFromItinerary';
 import type { AiDraft, Brief, DraftStage } from './types';
 
 export interface AiRequest {
@@ -51,12 +51,12 @@ export function createAiService(deps: {
     async buildRequest(draftId) {
       const d = await repo.getDraft(draftId);
       if (d.mode === 'surprise' && d.chosenIdeaId === null) {
-        need(d, ['brief', 'ideas_requested']);
+        need(d, ['brief', 'ideas_requested', 'ideas_received']);
         const prompt = buildIdeasPrompt(d.brief, today());
         await save(d, { stage: 'ideas_requested' });
         return { prompt, kind: 'ideas', openUrl: openInClaudeUrl(prompt) };
       }
-      need(d, d.mode === 'known' ? ['brief', 'itinerary_requested'] : ['idea_chosen', 'itinerary_requested']);
+      need(d, d.mode === 'known' ? ['brief', 'itinerary_requested', 'itinerary_received'] : ['idea_chosen', 'itinerary_requested', 'itinerary_received']);
       const idea = d.mode === 'surprise' ? (d.ideas ?? []).find((i) => i.id === d.chosenIdeaId) ?? null : null;
       const prompt = buildItineraryPrompt(d.brief, idea, today());
       await save(d, { stage: 'itinerary_requested' });
@@ -99,7 +99,17 @@ export function createAiService(deps: {
         { repo, tripService: deps.tripService, budgetService: deps.budgetService, today: today() },
         { brief: d.brief, itinerary, resolved },
       );
-      await save(d, { stage: 'created', tripId: result.tripId });
+      try {
+        await save(d, { stage: 'created', tripId: result.tripId });
+      } catch (e) {
+        // Brouillon non mis à jour : on retire le voyage pour qu'un réessai ne crée pas de doublon.
+        try {
+          await repo.deleteTrip(result.tripId);
+        } catch {
+          throw new CreationError('Le voyage est créé mais son brouillon n’a pas pu être mis à jour : ne recrée pas le voyage, ouvre « Mes voyages ».', e);
+        }
+        throw e;
+      }
       return result;
     },
   };

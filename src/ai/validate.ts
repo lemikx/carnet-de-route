@@ -29,9 +29,9 @@ export function safeUrl(u: unknown): string | null {
   }
 }
 
-function num(x: unknown, opts: { min?: number; int?: boolean } = {}): number | null {
+function num(x: unknown, opts: { min?: number; max?: number; int?: boolean } = {}): number | null {
   if (typeof x !== 'number' || !Number.isFinite(x)) return null;
-  if (x < (opts.min ?? 0) || x > LIMITS.maxNumber) return null;
+  if (x < (opts.min ?? 0) || x > Math.min(opts.max ?? LIMITS.maxNumber, LIMITS.maxNumber)) return null;
   if (opts.int && !Number.isInteger(x)) return null;
   return x;
 }
@@ -50,7 +50,7 @@ function parseVisa(raw: unknown, where: string, errors: string[], warnings: stri
   const days = (key: 'processingDaysMin' | 'processingDaysMax') => {
     const v = raw[key];
     if (v === null || v === undefined) return null;
-    const n = num(v, { int: true });
+    const n = num(v, { int: true, max: LIMITS.maxDays });
     if (n === null) errors.push(`${where} : « ${key} » du visa est invalide.`);
     return n;
   };
@@ -79,12 +79,14 @@ export function validateIdeas(raw: unknown): Out<IdeasResponse> {
     const destination = cleanText(it.destination, 120);
     const where = `Idée « ${destination || i + 1} »`;
     if (!destination) errors.push(`Idée ${i + 1} : destination manquante.`);
-    const dur = num(it.durationDays, { min: 1, int: true });
+    const dur = num(it.durationDays, { min: 1, int: true, max: 365 });
     if (dur === null) errors.push(`${where} : durée invalide.`);
     const budget = it.budgetPerPersonEur === null || it.budgetPerPersonEur === undefined ? null : num(it.budgetPerPersonEur);
     if (it.budgetPerPersonEur !== null && it.budgetPerPersonEur !== undefined && budget === null) errors.push(`${where} : budget invalide.`);
+    let id = cleanText(it.id, 60);
+    if (!id || ideas.some((x) => x.id === id)) id = `idee-${i + 1}`;
     ideas.push({
-      id: cleanText(it.id, 60) || `idee-${i + 1}`,
+      id,
       destination,
       country: cleanText(it.country, 60),
       summary: cleanText(it.summary),
@@ -131,7 +133,7 @@ export function validateItinerary(raw: unknown, opts: { tripDays: number }): Out
       }
       let durationMin: number | null = null;
       if (s.durationMin !== null && s.durationMin !== undefined) {
-        durationMin = num(s.durationMin, { int: true });
+        durationMin = num(s.durationMin, { int: true, max: LIMITS.maxDurationMin });
         if (durationMin === null) errors.push(`${where} : durée invalide.`);
       }
       const p = isObj(s.place) ? s.place : {};
@@ -154,7 +156,10 @@ export function validateItinerary(raw: unknown, opts: { tripDays: number }): Out
     if (!isObj(c)) return;
     const label = cleanText(c.label, 200);
     if (!label) { warnings.push(`Élément de checklist ${i + 1} ignoré (libellé manquant).`); return; }
-    const before = c.daysBeforeDeparture === null || c.daysBeforeDeparture === undefined ? null : num(c.daysBeforeDeparture, { int: true });
+    const before = c.daysBeforeDeparture === null || c.daysBeforeDeparture === undefined ? null : num(c.daysBeforeDeparture, { int: true, max: LIMITS.maxDays });
+    if (before === null && c.daysBeforeDeparture !== null && c.daysBeforeDeparture !== undefined) {
+      warnings.push(`Checklist « ${label} » : « daysBeforeDeparture » invalide, échéance ignorée.`);
+    }
     checklist.push({
       category: CHECKLIST_CATEGORIES.includes(c.category as ChecklistCategory) ? (c.category as ChecklistCategory) : 'before_departure',
       label,

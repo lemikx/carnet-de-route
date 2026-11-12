@@ -107,3 +107,23 @@ describe('validateItinerary', () => {
     expect('value' in r && Object.keys(r.value)).not.toContain('constructor');
   });
 });
+
+describe('correctifs de la revue', () => {
+  it('I3 : ids d’idées en double ou vides remplacés', () => {
+    const raw = ideas() as any;
+    raw.ideas.forEach((i: any) => { i.id = 'court-identifiant'; });
+    const r = validateIdeas(raw);
+    const ids = 'value' in r ? r.value.ideas.map((i) => i.id) : [];
+    expect(new Set(ids).size).toBe(3);
+  });
+  it('I8 : plafonds sur les jours et durées', () => {
+    const raw = ideas() as any;
+    raw.ideas[0].visa.processingDaysMax = 1000000;
+    expect('errors' in validateIdeas(raw)).toBe(true);
+    const r = validateItinerary(itin({ checklist: [{ category: 'documents', label: 'x', daysBeforeDeparture: 1000000 }] }), { tripDays: 2 });
+    expect('value' in r && r.value.checklist[0].daysBeforeDeparture).toBeNull();
+    expect('warnings' in r && r.warnings.join(' ')).toContain('daysBeforeDeparture');
+    const d = [{ day: 1, title: '', note: '', stops: [stop({ durationMin: 99999 })] }];
+    expect('errors' in validateItinerary(itin({ days: d }), { tripDays: 1 })).toBe(true);
+  });
+});

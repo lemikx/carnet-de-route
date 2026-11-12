@@ -72,3 +72,26 @@ describe('parseIdeas', () => {
     expect(!r.ok && r.errors[0]).toContain('un itinéraire, pas des idées');
   });
 });
+
+describe('correctifs de la revue (lecture)', () => {
+  const full = asReply(ITINERARY_FIXTURE, 'raw');
+  it('I6 : réponse coupée puis réponse complète collées à la suite', () => {
+    const text = `\`\`\`json\n${full.slice(0, 300)}\n\n\`\`\`json\n${full}\n\`\`\``;
+    const r = parseItinerary(text, opts);
+    expect(r.ok && r.value.trip.name).toBe('Kyoto express');
+  });
+  it('I7 : accolade isolée avant le JSON', () => {
+    const r = parseItinerary(`Voici ton plan :-{ \n${full}`, opts);
+    expect(r.ok).toBe(true);
+  });
+  it('M4 : balise sans fermeture mais JSON complet', () => {
+    expect(parseItinerary(`\`\`\`json\n${full}`, opts).ok).toBe(true);
+    expect(parseItinerary(`\`\`\`json ${full}\n\`\`\``, opts).ok).toBe(true);
+  });
+  it('beaucoup d’accolades : rapide', () => {
+    const t0 = Date.now();
+    const r = parseItinerary('{'.repeat(150000), opts);
+    expect(r.ok).toBe(false);
+    expect(Date.now() - t0).toBeLessThan(1500);
+  });
+});

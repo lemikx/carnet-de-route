@@ -44,4 +44,16 @@ describe('RequestPanel', () => {
     await paste(u);
     expect(onPaste).toHaveBeenCalledWith('x');
   });
+
+  it('I4 : échec d’enregistrement signalé, avec Réessayer', async () => {
+    const onPaste = vi.fn().mockRejectedValueOnce(new Error('panne')).mockResolvedValueOnce({ ok: true, value: {}, warnings: [] });
+    render(<RequestPanel kind="ideas" prompt="P" openUrl={null} onPaste={onPaste} />);
+    const u = userEvent.setup();
+    await u.type(screen.getByLabelText('Réponse de Claude'), 'x');
+    await u.click(screen.getByRole('button', { name: 'Analyser la réponse' }));
+    expect(await screen.findByText('Enregistrement impossible.')).toBeInTheDocument();
+    await u.click(screen.getByRole('button', { name: 'Réessayer' }));
+    await vi.waitFor(() => expect(onPaste).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(screen.queryByText('Enregistrement impossible.')).toBeNull());
+  });
 });
