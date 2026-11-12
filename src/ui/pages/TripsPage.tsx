@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../app/AppContext';
 import { formatDate, formatDayLabel } from '../../domain/format';
 import type { Day, Trip } from '../../domain/types';
@@ -16,6 +16,7 @@ const splitCountries = (s: string) => s.split(',').map((x) => x.trim()).filter(B
 export function TripsPage() {
   const { repo, service } = useApp();
   const online = useOnline();
+  const navigate = useNavigate();
   const trips = useAsync(() => repo.listTrips(), [repo]);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Trip | null>(null);
@@ -75,9 +76,14 @@ export function TripsPage() {
       <div className="page-head">
         <h1>Mes voyages</h1>
         {!creating && (
-          <button className="btn btn-primary" onClick={() => setCreating(true)} disabled={!online}>
-            Nouveau voyage
-          </button>
+          <div className="trip-actions">
+            <button className="btn btn-primary" onClick={() => setCreating(true)} disabled={!online}>
+              Nouveau voyage
+            </button>
+            <button className="btn" onClick={() => navigate('/ia/nouveau')} disabled={!online}>
+              Créer avec l’IA
+            </button>
+          </div>
         )}
       </div>
 

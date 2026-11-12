@@ -1,5 +1,6 @@
 import { createHashRouter, Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useApp } from './AppContext';
+import { QuestionnairePage } from '../ui/ai/QuestionnairePage';
 import { OfflineBanner } from '../ui/common/OfflineBanner';
 import { LoginPage } from '../ui/pages/LoginPage';
 import { RoadbookPage } from '../ui/pages/RoadbookPage';
@@ -52,6 +53,7 @@ export const router = createHashRouter([
     children: [
       { path: '/', element: <TripsPage /> },
       { path: '/reglages', element: <SettingsPage /> },
+      { path: '/ia/nouveau', element: <QuestionnairePage /> },
       { path: '/voyage/:id/roadbook', element: <RoadbookPage /> },
       { path: '/voyage/:id/:onglet?', element: <TripPage /> },
     ],
