@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import type { GeocodeResult, LatLon, RoutingService } from '../../routing/RoutingService';
+import { RoutingError, type GeocodeResult, type LatLon, type RoutingService } from '../../routing/RoutingService';
+
+const CAUSES: Partial<Record<string, string>> = {
+  QUOTA: 'Limite de recherche atteinte pour aujourd’hui : réessaie demain ou saisis la position à la main.',
+  UNAUTHORIZED: 'Recherche d’adresse impossible : reconnecte-toi.',
+  NETWORK: 'Recherche d’adresse impossible : vérifie ta connexion.',
+};
 
 export function AddressInput({
   routing, value, onChange, onPick, label = 'Adresse', focus,
@@ -35,8 +41,8 @@ export function AddressInput({
           setResults(r);
           setError(null);
         }
-      } catch {
-        if (!cancelled) setError('Recherche d’adresse indisponible.');
+      } catch (e) {
+        if (!cancelled) setError((e instanceof RoutingError && CAUSES[e.code]) || 'Recherche d’adresse indisponible.');
       }
     }, 400);
     return () => {
