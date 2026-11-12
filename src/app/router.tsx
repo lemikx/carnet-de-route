@@ -1,5 +1,6 @@
 import { createHashRouter, Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useApp } from './AppContext';
+import { DraftPage } from '../ui/ai/DraftPage';
 import { QuestionnairePage } from '../ui/ai/QuestionnairePage';
 import { OfflineBanner } from '../ui/common/OfflineBanner';
 import { LoginPage } from '../ui/pages/LoginPage';
@@ -54,6 +55,7 @@ export const router = createHashRouter([
       { path: '/', element: <TripsPage /> },
       { path: '/reglages', element: <SettingsPage /> },
       { path: '/ia/nouveau', element: <QuestionnairePage /> },
+      { path: '/ia/:draftId', element: <DraftPage /> },
       { path: '/voyage/:id/roadbook', element: <RoadbookPage /> },
       { path: '/voyage/:id/:onglet?', element: <TripPage /> },
     ],
