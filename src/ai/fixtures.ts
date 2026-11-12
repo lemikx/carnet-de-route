@@ -21,7 +21,7 @@ export const IDEAS_FIXTURE: IdeasResponse = {
     {
       id: 'lagos', destination: 'Lagos', country: 'NG', summary: 'Énergie urbaine.', durationDays: 3,
       highlights: ['Marchés'], budgetPerPersonEur: 1400, whyItMatches: 'Hors des sentiers battus.',
-      visa: { ...visaYes, processingDaysMin: 30, processingDaysMax: 400 },
+      visa: { ...visaYes, processingDaysMin: 30, processingDaysMax: 4000 },
     },
   ],
 };

@@ -21,7 +21,7 @@ describe('IdeasPanel', () => {
     expect(heads[2]).toContain('Lagos');
     const last = screen.getAllByRole('listitem').filter((li) => li.classList.contains('idea-card')).pop()!;
     expect(last).toHaveClass('muted');
-    expect(within(last).getByText(/Délai de traitement jusqu'à 400 jours/)).toBeInTheDocument();
+    expect(within(last).getByText(/Délai de traitement jusqu'à 4000 jours/)).toBeInTheDocument();
   });
   it('« Choisir cette idée » renvoie le bon id', async () => {
     const onChoose = vi.fn();

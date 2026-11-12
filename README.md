@@ -2,9 +2,10 @@
 
 Appli web installable (Mac + iPhone) pour préparer un voyage à l'étranger et produire un **roadbook complet** :
 itinéraire jour par jour, trajets calculés, cartes, checklist, réservations, contacts, roadbook HTML/PDF,
-partage par lien en lecture seule, export calendrier (fichier `.ics` ou abonnement) et **budget** (enveloppe, lignes prévues, dépenses multi-devises, partage des frais, pistes d'économie).
+partage par lien en lecture seule, export calendrier (fichier `.ics` ou abonnement) et **budget** (enveloppe, lignes prévues, dépenses multi-devises, partage des frais, pistes d'économie) et **création de voyage avec l'IA** (questionnaire, copier-coller avec Claude, visas, lieux placés automatiquement).
 
 - Spécification : [`docs/superpowers/specs/2026-11-11-carnet-de-route-etape1-design.md`](docs/superpowers/specs/2026-11-11-carnet-de-route-etape1-design.md)
+- Spécification de la création avec l'IA : [`docs/superpowers/specs/2026-11-12-carnet-de-route-etape3-ia-design.md`](docs/superpowers/specs/2026-11-12-carnet-de-route-etape3-ia-design.md)
 - Spécification du budget : [`docs/superpowers/specs/2026-11-11-carnet-de-route-etape2-budget-design.md`](docs/superpowers/specs/2026-11-11-carnet-de-route-etape2-budget-design.md)
 - Mise en place (Supabase, OpenRouteService, GitHub Pages) : [`docs/MISE-EN-PLACE.md`](docs/MISE-EN-PLACE.md)
 
@@ -31,6 +32,7 @@ npm run test:db     # migrations et règles de sécurité sur un PostgreSQL 16 l
 | `src/fx` | Taux de change (Frankfurter, ou factices pour les tests) |
 | `src/data` | Accès aux données : interface `TripRepository`, versions mémoire et Supabase |
 | `src/routing` | Géocodage et calcul de trajets (OpenRouteService via fonction serveur, ou simulé) |
+| `src/ai` | Création avec l'IA : protocole JSON, lecture des réponses, visas, demande, placement des lieux |
 | `src/services` | Orchestration (création, dates, étapes, trajets, réservations) |
 | `src/offline` | Cache local et lecture seule hors ligne |
 | `src/ui` | Écrans React |

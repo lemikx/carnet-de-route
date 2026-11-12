@@ -147,3 +147,24 @@ La migration retire aussi l'enveloppe du budget des données du **roadbook parta
 
 ### Taux de change
 Les taux viennent du service gratuit **Frankfurter** (taux de la Banque centrale européenne), appelé directement par l'appli. Si le service est indisponible, l'appli garde le dernier taux connu et te laisse saisir le taux à la main.
+
+---
+
+## Ajouter la création par IA à une base déjà en service
+
+Si ta base a été créée avant l'étape 3, il suffit d'ajouter **une seule migration**, après la `0005` :
+
+1. Dans Supabase, ouvre **SQL Editor → New query**.
+2. Ouvre le fichier `supabase/migrations/0006_ai_drafts.sql` du dépôt, copie tout son contenu et colle-le.
+3. Clique sur **Run**. Si l'éditeur avertit que la table n'a pas de RLS, choisis **Run and enable RLS**.
+4. Résultat attendu : **« Success. No rows returned »**.
+
+Ne lance **pas** `setup-complet.sql` sur une base qui existe déjà.
+
+La migration crée seulement la table des **brouillons** (tes réponses au questionnaire et les réponses de Claude, tant que le voyage n'est pas créé). Ils sont privés : ni le roadbook partagé ni le calendrier n'y ont accès.
+
+### Utiliser « Créer avec l'IA »
+1. **Mes voyages → Créer avec l'IA**, réponds au questionnaire (seules les dates sont obligatoires).
+2. Copie la demande dans Claude (ou **Ouvrir dans Claude**), avec la **recherche web activée**, puis colle sa réponse.
+3. Les visas sont vérifiés par l'appli (vert / orange / rouge / gris) : **toujours à confirmer sur le site officiel**.
+4. Vérifie le résumé puis **Créer le voyage**. Les lieux introuvables sont signalés « à vérifier ».
