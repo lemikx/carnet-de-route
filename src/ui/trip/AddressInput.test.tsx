@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AddressInput } from './AddressInput';
 import { createFakeRouting } from '../../routing/fakeRouting';
+import { RoutingError, type RoutingErrorCode, type RoutingService } from '../../routing/RoutingService';
 
 describe('AddressInput', () => {
   it('propose les résultats et renvoie le choix', async () => {
@@ -24,5 +25,16 @@ describe('AddressInput', () => {
     render(<AddressInput routing={createFakeRouting()} value="" onChange={() => {}} onPick={() => {}} />);
     await userEvent.setup().type(screen.getByLabelText('Adresse'), 'rue introuvable');
     expect(await screen.findByText('Adresse introuvable')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['QUOTA', /Limite de recherche atteinte/],
+    ['UNAUTHORIZED', /reconnecte-toi/],
+    ['NETWORK', /vérifie ta connexion/],
+  ] as [RoutingErrorCode, RegExp][])('explique la cause : %s', async (code, text) => {
+    const routing: RoutingService = { ...createFakeRouting(), geocode: async () => { throw new RoutingError(code, 'x'); } };
+    render(<AddressInput routing={routing} value="" onChange={() => {}} onPick={() => {}} />);
+    await userEvent.setup().type(screen.getByLabelText('Adresse'), 'Essaouira');
+    expect(await screen.findByText(text)).toBeInTheDocument();
   });
 });
