@@ -29,8 +29,8 @@ describe('AddressInput', () => {
 
   it.each([
     ['QUOTA', /Limite de recherche atteinte/],
-    ['UNAUTHORIZED', /Reconnecte-toi/],
-    ['NETWORK', /Vérifie ta connexion/],
+    ['UNAUTHORIZED', /reconnecte-toi/],
+    ['NETWORK', /vérifie ta connexion/],
   ] as [RoutingErrorCode, RegExp][])('explique la cause : %s', async (code, text) => {
     const routing: RoutingService = { ...createFakeRouting(), geocode: async () => { throw new RoutingError(code, 'x'); } };
     render(<AddressInput routing={routing} value="" onChange={() => {}} onPick={() => {}} />);
