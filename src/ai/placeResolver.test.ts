@@ -4,7 +4,7 @@ import { haversineKm, resolvePlaces } from './placeResolver';
 import type { ItineraryPlace } from './types';
 
 const place = (name: string): ItineraryPlace => ({ name, city: 'Kyoto', country: 'Japon' });
-const geo = (lat: number, lon = 135): GeocodeResult => ({ label: 'x', lat, lon, country: 'JPN', timezone: 'Asia/Tokyo' });
+const geo = (lat: number, lon = 135, label = 'x'): GeocodeResult => ({ label, lat, lon, country: 'JPN', timezone: 'Asia/Tokyo' });
 
 function service(fn: (q: string, focus: LatLon | undefined, n: number) => Promise<GeocodeResult[]>) {
   const calls: { q: string; focus?: LatLon }[] = [];
@@ -52,7 +52,7 @@ describe('resolvePlaces', () => {
     const lats2 = [35, 35, 35, 36.36];
     const s2 = service(async (q) => [geo(lats2[Number(q.slice(1, 2))])]);
     const r2 = await resolvePlaces(places, { routing: s2.routing });
-    expect(r2[3]).toMatchObject({ status: 'far', lat: 36.36 });
+    expect(r2[3]).toMatchObject({ status: 'far', lat: null, lon: null });
   });
 
   it('quota en cours de route : les suivants sont indisponibles et plus aucun appel', async () => {
@@ -92,5 +92,19 @@ describe('resolvePlaces', () => {
 
   it('haversine', () => {
     expect(haversineKm({ lat: 0, lon: 0 }, { lat: 1, lon: 0 })).toBeCloseTo(111.19, 1);
+  });
+
+  it('choisit un autre candidat proche du centre quand le premier est loin', async () => {
+    const { routing } = service(async (q) => (q.startsWith('L3') ? [geo(48.8, 2.3), geo(35.05)] : [geo(35)]));
+    const r = await resolvePlaces([0, 1, 2, 3].map((n) => place(`L${n}`)), { routing });
+    expect(r[3]).toMatchObject({ status: 'ok', lat: 35.05 });
+  });
+
+  it('garde un lieu lointain légitime si le pays demandé figure dans l’adresse', async () => {
+    const { routing } = service(async (q) => (q.startsWith('L3') ? [geo(43.6, 1.36, 'Aéroport, Blagnac, France')] : [geo(14.7, -17.4)]));
+    const places = [0, 1, 2].map((n) => place(`L${n}`));
+    places.push({ name: 'L3', city: 'Blagnac', country: 'France' });
+    const r = await resolvePlaces(places, { routing });
+    expect(r[3]).toMatchObject({ status: 'ok', lat: 43.6 });
   });
 });

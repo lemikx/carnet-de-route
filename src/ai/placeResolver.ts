@@ -1,4 +1,4 @@
-import { RoutingError, type LatLon, type RoutingService } from '../routing/RoutingService';
+import { RoutingError, type GeocodeResult, type LatLon, type RoutingService } from '../routing/RoutingService';
 import type { ItineraryPlace } from './types';
 
 export interface ResolvedPlace {
@@ -21,6 +21,8 @@ export function haversineKm(a: LatLon, b: LatLon): number {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+const plain = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
 const median = (xs: number[]) => {
   const s = [...xs].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
@@ -39,6 +41,8 @@ export async function resolvePlaces(
   const queries = places.map(queryOf);
   const unique = [...new Set(queries)];
   const results = new Map<string, ResolvedPlace>();
+  const candidates = new Map<string, GeocodeResult[]>();
+  const countryOf = new Map(places.map((p, i) => [queries[i], p.country] as const));
   let done = 0;
   let broken = false;
 
@@ -57,6 +61,7 @@ export async function resolvePlaces(
       try {
         const found = await deps.routing.geocode(q, focus);
         const first = found[0];
+        candidates.set(q, found);
         return first ? { status: 'ok', lat: first.lat, lon: first.lon, timezone: first.timezone, label: first.label } : NOT_FOUND;
       } catch (e) {
         if (e instanceof RoutingError && (e.code === 'QUOTA' || e.code === 'NETWORK' || e.code === 'UNAUTHORIZED')) return 'down';
@@ -72,12 +77,21 @@ export async function resolvePlaces(
     deps.onProgress?.(Math.min(done, unique.length), unique.length);
   }
 
-  // Lieux trop éloignés des autres : on garde leurs coordonnées mais on les signale.
+  // Lieux trop éloignés des autres : on cherche un meilleur candidat près du centre ; à défaut, on les signale
+  // sans coordonnées, sauf si le pays demandé figure dans l'adresse trouvée (ex. aéroport de départ à l'étranger).
   const placed = [...results.values()].filter((r) => r.status === 'ok');
   if (placed.length >= 2) {
     const center = { lat: median(placed.map((r) => r.lat!)), lon: median(placed.map((r) => r.lon!)) };
     for (const [q, r] of results) {
-      if (r.status === 'ok' && haversineKm(center, { lat: r.lat!, lon: r.lon! }) > FAR_KM) results.set(q, { ...r, status: 'far' });
+      if (r.status !== 'ok' || haversineKm(center, { lat: r.lat!, lon: r.lon! }) <= FAR_KM) continue;
+      const near = (candidates.get(q) ?? []).find((c) => haversineKm(center, c) <= FAR_KM);
+      if (near) {
+        results.set(q, { status: 'ok', lat: near.lat, lon: near.lon, timezone: near.timezone, label: near.label });
+        continue;
+      }
+      const country = plain(countryOf.get(q) ?? '').trim();
+      const plausible = country !== '' && plain(r.label ?? '').includes(country);
+      if (!plausible) results.set(q, { ...r, status: 'far', lat: null, lon: null });
     }
   }
   return queries.map((q) => results.get(q) ?? NOT_FOUND);
