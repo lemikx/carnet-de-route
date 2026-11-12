@@ -7,6 +7,10 @@ describe('ors', () => {
     expect(mapOrsError(400, { error: { code: 2009 } })).toBe('NO_ROUTE');
     expect(mapOrsError(400, { error: { code: 2004 } })).toBe('NO_ROUTE');
     expect(mapOrsError(403, {})).toBe('UNAUTHORIZED');
+    // Tyk (passerelle d'OpenRouteService) répond 403 « Quota exceeded » quand la limite est atteinte.
+    expect(mapOrsError(403, { error: 'Quota exceeded' })).toBe('QUOTA');
+    expect(mapOrsError(403, { error: 'quota exceeded for this key' })).toBe('QUOTA');
+    expect(mapOrsError(403, { error: 'Access to this API has been disallowed' })).toBe('UNAUTHORIZED');
     expect(mapOrsError(500, {})).toBe('NETWORK');
   });
 
