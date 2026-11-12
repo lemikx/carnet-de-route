@@ -9,7 +9,8 @@ const NO_ROUTE_CODES = new Set([2004, 2009, 2010]);
 
 export function mapOrsError(status: number, body: unknown): RoutingErrorCode {
   const code = (body as { error?: { code?: number } })?.error?.code;
-  if (status === 429) return 'QUOTA';
+  const message = (body as { error?: unknown })?.error;
+  if (status === 429 || (typeof message === 'string' && /quota exceeded/i.test(message))) return 'QUOTA';
   if (status === 404 || (typeof code === 'number' && NO_ROUTE_CODES.has(code))) return 'NO_ROUTE';
   if (status === 401 || status === 403) return 'UNAUTHORIZED';
   return 'NETWORK';
