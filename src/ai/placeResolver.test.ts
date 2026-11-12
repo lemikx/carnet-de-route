@@ -52,7 +52,7 @@ describe('resolvePlaces', () => {
     const lats2 = [35, 35, 35, 36.36];
     const s2 = service(async (q) => [geo(lats2[Number(q.slice(1, 2))])]);
     const r2 = await resolvePlaces(places, { routing: s2.routing });
-    expect(r2[3]).toMatchObject({ status: 'far', lat: null, lon: null });
+    expect(r2[3]).toMatchObject({ status: 'far', lat: 36.36 });
   });
 
   it('quota en cours de route : les suivants sont indisponibles et plus aucun appel', async () => {
@@ -101,10 +101,23 @@ describe('resolvePlaces', () => {
   });
 
   it('garde un lieu lointain légitime si le pays demandé figure dans l’adresse', async () => {
-    const { routing } = service(async (q) => (q.startsWith('L3') ? [geo(43.6, 1.36, 'Aéroport, Blagnac, France')] : [geo(14.7, -17.4)]));
+    const { routing } = service(async (q) => (q.startsWith('L3') ? [{ ...geo(43.6, 1.36, 'Aéroport, Blagnac, France'), country: 'FRA' }] : [geo(14.7, -17.4)]));
     const places = [0, 1, 2].map((n) => place(`L${n}`));
     places.push({ name: 'L3', city: 'Blagnac', country: 'France' });
     const r = await resolvePlaces(places, { routing });
     expect(r[3]).toMatchObject({ status: 'ok', lat: 43.6 });
+  });
+
+  it('garde (et signale) un lieu éloigné situé dans le même pays que les autres', async () => {
+    const maroc = (lat: number, lon: number, label: string) => ({ label, lat, lon, country: 'MAR', timezone: 'Africa/Casablanca' });
+    const { routing } = service(async (q) => (q.startsWith('L3') ? [maroc(31.5, -9.77, 'Dar Loulema, Essaouira, Morocco')] : [maroc(31.63, -8.0, 'Marrakech, Morocco')]));
+    const r = await resolvePlaces([0, 1, 2, 3].map((n) => place(`L${n}`)), { routing });
+    expect(r[3]).toMatchObject({ status: 'far', lat: 31.5, lon: -9.77 });
+  });
+  it('sans coordonnées si le pays diffère des autres lieux', async () => {
+    const fr = { label: 'Paris, France', lat: 48.8, lon: 2.3, country: 'FRA', timezone: 'Europe/Paris' };
+    const { routing } = service(async (q) => (q.startsWith('L3') ? [fr] : [{ ...fr, label: 'Dakar', lat: 14.7, lon: -17.4, country: 'SEN' }]));
+    const r = await resolvePlaces([0, 1, 2, 3].map((n) => place(`L${n}`)), { routing });
+    expect(r[3]).toMatchObject({ status: 'far', lat: null, lon: null });
   });
 });
