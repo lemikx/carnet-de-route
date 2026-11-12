@@ -1,3 +1,4 @@
+import type { AiDraft } from '../ai/types';
 import { omitBudget } from '../domain/budget/types';
 import type { BudgetLine, Expense, Traveler } from '../domain/budget/types';
 import { stripSensitive } from '../domain/roadbook';
@@ -20,6 +21,7 @@ interface Store {
   travelers: Traveler[];
   budgetLines: BudgetLine[];
   expenses: Expense[];
+  drafts: AiDraft[];
 }
 
 export interface KeyStorage {
@@ -40,7 +42,7 @@ const now = () => new Date().toISOString();
 const clone = <T>(v: T): T => structuredClone(v);
 
 function emptyStore(): Store {
-  return { trips: [], days: [], stops: [], legs: [], reservations: [], checklist: [], contacts: [], shareLinks: [], calendarLinks: [], travelers: [], budgetLines: [], expenses: [] };
+  return { trips: [], days: [], stops: [], legs: [], reservations: [], checklist: [], contacts: [], shareLinks: [], calendarLinks: [], travelers: [], budgetLines: [], expenses: [], drafts: [] };
 }
 
 export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: KeyStorage } = {}): TripRepository {
@@ -147,6 +149,7 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
       store.travelers = store.travelers.filter((x) => x.tripId !== id);
       store.budgetLines = store.budgetLines.filter((x) => x.tripId !== id);
       store.expenses = store.expenses.filter((x) => x.tripId !== id);
+      store.drafts.forEach((d) => { if (d.tripId === id) d.tripId = null; });
       return done(undefined);
     },
     async createDays(tripId, dates) {
@@ -328,6 +331,21 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
       trip.budgetCapMode = s.capMode;
       trip.fxMarginPct = s.fxMarginPct;
       return done(clone(trip));
+    },
+    async listDrafts() {
+      return clone([...store.drafts].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+    },
+    async getDraft(id) {
+      const d = store.drafts.find((x) => x.id === id);
+      if (!d) throw new NotFoundError('Brouillon introuvable');
+      return clone(d);
+    },
+    async saveDraft(d) {
+      return done(upsert(store.drafts, { ...d, updatedAt: now() }));
+    },
+    async deleteDraft(id) {
+      store.drafts = store.drafts.filter((x) => x.id !== id);
+      return done(undefined);
     },
     async getDisplayName() {
       return store.displayName ?? '';

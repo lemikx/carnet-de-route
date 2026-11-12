@@ -1,3 +1,4 @@
+import type { AiDraft } from '../ai/types';
 import type { CalendarOptions } from '../domain/calendar';
 import type { BudgetData, BudgetLine, BudgetSettings, Expense, Traveler } from '../domain/budget/types';
 import type {
@@ -85,6 +86,11 @@ export interface TripRepository {
   saveExpense(e: Expense | New<Expense>): Promise<Expense>; // BudgetError NO_PARTICIPANT / BOTH_LINKS
   deleteExpense(id: string): Promise<void>;
   updateBudgetSettings(tripId: string, s: BudgetSettings): Promise<Trip>;
+  // Brouillons de création IA (étape 3) : hors de TripBundle, jamais lus par le partage ni le calendrier.
+  listDrafts(): Promise<AiDraft[]>;
+  getDraft(id: string): Promise<AiDraft>;
+  saveDraft(d: AiDraft | New<AiDraft>): Promise<AiDraft>;
+  deleteDraft(id: string): Promise<void>;
 }
 
 export const DEFAULT_OWNER_NAME = 'Voyageur';
