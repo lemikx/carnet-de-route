@@ -62,7 +62,7 @@ export async function createTripFromItinerary(
       await repo.updateDay({ ...target, title: day.title, note: day.note });
       const ordered = [...indexed.filter((x) => x.stop.kind !== 'lodging'), ...indexed.filter((x) => x.stop.kind === 'lodging')];
       for (const [position, { stop, res }] of ordered.entries()) {
-        const located = res.status === 'ok';
+        const located = res.lat !== null && res.lon !== null;
         if (res.status !== 'ok') toVerify++;
         const s: Omit<Stop, 'id'> = {
           dayId: target.id,
@@ -75,7 +75,7 @@ export async function createTripFromItinerary(
           timezone: res.timezone ?? bundle.trip.homeTimezone,
           startTime: stop.startTime,
           durationMin: stop.durationMin,
-          note: located ? stop.note : [stop.note, 'À vérifier : lieu non localisé automatiquement.'].filter(Boolean).join('\n'),
+          note: res.status === 'ok' ? stop.note : [stop.note, located ? 'À vérifier : lieu éloigné des autres étapes.' : 'À vérifier : lieu non localisé automatiquement.'].filter(Boolean).join('\n'),
           phone: '',
           url: '',
           reservationId: null,

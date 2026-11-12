@@ -42,6 +42,7 @@ export async function resolvePlaces(
   const unique = [...new Set(queries)];
   const results = new Map<string, ResolvedPlace>();
   const candidates = new Map<string, GeocodeResult[]>();
+  const isoOf = (q: string) => candidates.get(q)?.[0]?.country ?? '';
   const countryOf = new Map(places.map((p, i) => [queries[i], p.country] as const));
   let done = 0;
   let broken = false;
@@ -81,12 +82,20 @@ export async function resolvePlaces(
   // sans coordonnées, sauf si le pays demandé figure dans l'adresse trouvée (ex. aéroport de départ à l'étranger).
   const placed = [...results.values()].filter((r) => r.status === 'ok');
   if (placed.length >= 2) {
+    const tally = new Map<string, number>();
+    for (const [q, r] of results) if (r.status === 'ok') tally.set(isoOf(q), (tally.get(isoOf(q)) ?? 0) + 1);
+    const main = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
     const center = { lat: median(placed.map((r) => r.lat!)), lon: median(placed.map((r) => r.lon!)) };
     for (const [q, r] of results) {
       if (r.status !== 'ok' || haversineKm(center, { lat: r.lat!, lon: r.lon! }) <= FAR_KM) continue;
       const near = (candidates.get(q) ?? []).find((c) => haversineKm(center, c) <= FAR_KM);
       if (near) {
         results.set(q, { status: 'ok', lat: near.lat, lon: near.lon, timezone: near.timezone, label: near.label });
+        continue;
+      }
+      // Même pays que la majorité des lieux (circuit étalé) : on garde la position, mais on signale le lieu.
+      if (main && isoOf(q) === main) {
+        results.set(q, { ...r, status: 'far' });
         continue;
       }
       const country = plain(countryOf.get(q) ?? '').trim();
