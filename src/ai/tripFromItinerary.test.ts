@@ -122,4 +122,18 @@ describe('createTripFromItinerary', () => {
     await expect(createTripFromItinerary(deps, { brief, itinerary: itin(), resolved: Array(5).fill(ok()) }))
       .rejects.toThrow(/incomplet/);
   });
+
+  it('lieu lointain (far) : pas de coordonnées et note « à vérifier »', async () => {
+    const { repo, deps } = setup();
+    const far: ResolvedPlace = { status: 'far', lat: null, lon: null, timezone: null, label: null };
+    const it1 = itin();
+    const resolved = Array(nStops(it1)).fill(null).map(() => ok());
+    resolved[1] = far;
+    const r = await createTripFromItinerary(deps, { brief, itinerary: it1, resolved });
+    const stops = (await repo.getBundle(r.tripId)).stops;
+    const flagged = stops.filter((s) => s.lat === null);
+    expect(flagged).toHaveLength(1);
+    expect(flagged[0].note).toContain('À vérifier');
+    expect(r.toVerify).toBe(1);
+  });
 });
