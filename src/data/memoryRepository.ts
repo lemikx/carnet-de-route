@@ -341,7 +341,7 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
       return clone(d);
     },
     async saveDraft(d) {
-      return done(upsert(store.drafts, { ...d, updatedAt: now() }));
+      return done(upsert<AiDraft>(store.drafts, { ...d, updatedAt: now() } as AiDraft));
     },
     async deleteDraft(id) {
       store.drafts = store.drafts.filter((x) => x.id !== id);

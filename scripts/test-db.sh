@@ -27,7 +27,7 @@ PSQL=(psql -h "$TMP" -p 54329 -U postgres -d postgres -v ON_ERROR_STOP=1 -q -X -
 for f in supabase/migrations/*.sql; do "${PSQL[@]}" -f "$f"; done
 
 status=0
-for t in supabase/tests/rls.sql supabase/tests/sharing.sql supabase/tests/calendar.sql supabase/tests/privacy.sql supabase/tests/budget.sql; do
+for t in supabase/tests/rls.sql supabase/tests/sharing.sql supabase/tests/calendar.sql supabase/tests/privacy.sql supabase/tests/budget.sql supabase/tests/ai_drafts.sql; do
   echo "== $t"
   out=$("${PSQL[@]}" -f "$t" 2>&1) || status=1
   echo "$out" | sed 's/^psql:[^:]*:[0-9]*: //'

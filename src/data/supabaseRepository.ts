@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { AiDraft } from '../ai/types';
 import type { ChecklistItem, Contact, Day, Leg, Reservation, ShareLink, Stop, Trip, TripBundle } from '../domain/types';
 import type { BudgetLine, Expense, Traveler } from '../domain/budget/types';
 import { budgetFromJson, expenseToRpc, fromRow, rowsToBundle, toRow } from './supabaseMapping';
@@ -141,6 +142,16 @@ export function createSupabaseRepository(client: SupabaseClient): TripRepository
       ) as Row;
       return fromRow<Trip>(r);
     },
+    async listDrafts() {
+      return (check(await client.from('ai_drafts').select('*').order('updated_at', { ascending: false })) as Row[]).map((r) => fromRow<AiDraft>(r));
+    },
+    async getDraft(id) {
+      const r = check(await client.from('ai_drafts').select('*').eq('id', id).maybeSingle()) as Row | null;
+      if (!r) throw new NotFoundError('Brouillon introuvable');
+      return fromRow<AiDraft>(r);
+    },
+    saveDraft: (d) => save<AiDraft>('ai_drafts', d),
+    deleteDraft: (id) => remove('ai_drafts', [id]),
     async getDisplayName() {
       const r = check(await client.from('profiles').select('display_name').maybeSingle()) as Row | null;
       return String(r?.display_name ?? '');
