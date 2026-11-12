@@ -214,3 +214,14 @@ th { color: var(--muted); font-weight: 600; }
 .advice ul { margin: 4px 0; padding-left: 18px; }
 .budget-sections { display: grid; gap: 16px; }
 @media (max-width: 520px) { .budget-figures { grid-template-columns: 1fr; } }
+
+/* Étape 3 : création avec l'IA */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.9rem; color: var(--text); flex: 0 0 auto; flex-direction: row; }
+.idea-list { list-style: none; padding: 0; display: grid; gap: 12px; }
+.idea-card.muted { opacity: 0.7; }
+.visa-badge { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; border-left: 4px solid var(--muted); background: var(--surface); margin: 8px 0; font-size: 0.9rem; }
+.visa-green { border-left-color: var(--ok); }
+.visa-orange { border-left-color: #d98300; background: var(--warning-bg); color: var(--warning-text); }
+.visa-red { border-left-color: var(--danger); }
+.visa-grey { border-left-color: var(--muted); }

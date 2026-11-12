@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../app/AppContext';
 import { formatDate, formatDayLabel } from '../../domain/format';
 import type { Day, Trip } from '../../domain/types';
 import { NeedsConfirmationError } from '../../services/tripService';
 import { useOnline } from '../../offline/useOnline';
+import { DraftsList } from '../ai/DraftsList';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { SaveError } from '../common/SaveError';
 import { useAsync } from '../common/useAsync';
@@ -16,7 +17,15 @@ const splitCountries = (s: string) => s.split(',').map((x) => x.trim()).filter(B
 export function TripsPage() {
   const { repo, service } = useApp();
   const online = useOnline();
+  const navigate = useNavigate();
   const trips = useAsync(() => repo.listTrips(), [repo]);
+  const drafts = useAsync(() => repo.listDrafts().catch(() => []), [repo]);
+  const removeDraft = useSave(
+    useCallback(async (id: string) => {
+      await repo.deleteDraft(id);
+      await drafts.reload();
+    }, [repo, drafts]),
+  );
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Trip | null>(null);
   const [deleting, setDeleting] = useState<Trip | null>(null);
@@ -75,9 +84,14 @@ export function TripsPage() {
       <div className="page-head">
         <h1>Mes voyages</h1>
         {!creating && (
-          <button className="btn btn-primary" onClick={() => setCreating(true)} disabled={!online}>
-            Nouveau voyage
-          </button>
+          <div className="trip-actions">
+            <button className="btn btn-primary" onClick={() => setCreating(true)} disabled={!online}>
+              Nouveau voyage
+            </button>
+            <button className="btn" onClick={() => navigate('/ia/nouveau')} disabled={!online}>
+              Créer avec l’IA
+            </button>
+          </div>
         )}
       </div>
 
@@ -87,6 +101,9 @@ export function TripsPage() {
           <SaveError error={create.error} onRetry={create.retry} />
         </>
       )}
+
+      <DraftsList drafts={drafts.data ?? []} onDelete={(id) => void removeDraft.run(id)} />
+      <SaveError error={removeDraft.error} onRetry={removeDraft.retry} />
 
       {trips.loading && !trips.data && <p className="muted">Chargement…</p>}
       {Boolean(trips.error) && <p role="alert" className="save-error">Impossible de charger tes voyages.</p>}

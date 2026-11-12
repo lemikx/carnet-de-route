@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BudgetError, NotFoundError, type New, type TripRepository } from './TripRepository';
 import type { BudgetLine, Expense, Traveler } from '../domain/budget/types';
 import type { Reservation, Stop, Trip } from '../domain/types';
+import type { AiDraft } from '../ai/types';
 
 const newTrip = (): New<Trip> => ({
   name: 'Japon', countries: ['JP'], startDate: '2026-12-01', endDate: '2026-12-03',
@@ -218,6 +219,63 @@ export function runRepositoryContract(name: string, make: () => Promise<TripRepo
           const json = JSON.stringify(await repo.getSharedRoadbook(link.token));
           expect(json).not.toMatch(/budgetCap|budget_cap|fxMargin|fx_margin|travelers|expenses/);
         }
+      });
+    });
+
+    describe('brouillons IA', () => {
+      const draft = (title: string, over: Partial<AiDraft> = {}): Omit<AiDraft, 'id'> => ({
+        stage: 'brief', mode: 'surprise', ideas: null, chosenIdeaId: null, itinerary: null, tripId: null, protocolVersion: 1, updatedAt: '',
+        brief: {
+          destination: title, startDate: '2026-12-20', endDate: '2026-12-24', departureCity: 'Lyon', adults: 2, children: 0,
+          travelers: [{ name: 'A', nationality: 'FR' }], budgetPerPersonEur: 1500, travelerTypes: [], tripTypes: [], wishes: [],
+          lodging: [], pace: null, constraints: 'brief-secret',
+        },
+        ...over,
+      });
+
+      it('crée, liste (récent d’abord), met à jour et supprime', async () => {
+        const repo = await make();
+        const a = await repo.saveDraft(draft('A'));
+        await new Promise((r) => setTimeout(r, 5));
+        const b = await repo.saveDraft(draft('B'));
+        expect((await repo.listDrafts()).map((d) => d.id)).toEqual([b.id, a.id]);
+        await new Promise((r) => setTimeout(r, 5));
+        const a2 = await repo.saveDraft({ ...a, stage: 'ideas_requested' });
+        expect(a2.id).toBe(a.id);
+        expect(a2.updatedAt > a.updatedAt).toBe(true);
+        expect((await repo.listDrafts()).map((d) => d.id)).toEqual([a.id, b.id]);
+        await repo.deleteDraft(b.id);
+        expect((await repo.listDrafts()).map((d) => d.id)).toEqual([a.id]);
+      });
+
+      it('getDraft d’un id inconnu → NotFoundError', async () => {
+        const repo = await make();
+        await expect(repo.getDraft('00000000-0000-4000-8000-000000000000')).rejects.toBeInstanceOf(NotFoundError);
+      });
+
+      it('rend le contenu à l’identique', async () => {
+        const repo = await make();
+        const d = draft('Lisbonne');
+        const saved = await repo.saveDraft(d);
+        const back = await repo.getDraft(saved.id);
+        expect(back.brief).toEqual(d.brief);
+        expect(back.brief.departureCity).toBe('Lyon');
+      });
+
+      it('supprimer le voyage garde le brouillon avec tripId null', async () => {
+        const { repo, trip } = await setup();
+        const saved = await repo.saveDraft(draft('X', { stage: 'created', tripId: trip.id }));
+        await repo.deleteTrip(trip.id);
+        const back = await repo.getDraft(saved.id);
+        expect(back.tripId).toBeNull();
+      });
+
+      it('ne fuit ni par le bundle ni par le partage', async () => {
+        const { repo, trip } = await setup();
+        await repo.saveDraft(draft('X', { tripId: trip.id }));
+        const link = await repo.createShareLink(trip.id, false);
+        const json = JSON.stringify([await repo.getBundle(trip.id), await repo.getSharedRoadbook(link.token)]);
+        expect(json).not.toMatch(/brief-secret|brief|draft/);
       });
     });
   });

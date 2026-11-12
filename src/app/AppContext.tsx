@@ -9,6 +9,8 @@ import { createEdgeRouting } from '../routing/edgeRouting';
 import { createFakeRouting } from '../routing/fakeRouting';
 import type { RoutingService } from '../routing/RoutingService';
 import { createTripService, type TripService } from '../services/tripService';
+import { createBudgetService } from '../services/budgetService';
+import { createAiService, type AiService } from '../ai/aiService';
 import { DEFAULT_HEAVY_THRESHOLD_MIN } from '../domain/schedule';
 import { getDataMode, getFxMode, type DataMode } from './config';
 import { createFakeFx } from '../fx/fakeFx';
@@ -27,6 +29,7 @@ export interface AppValue {
   service: TripService;
   routing: RoutingService;
   fx: FxService;
+  ai: AiService;
   user: AppUser | null;
   authReady: boolean;
   supabase: SupabaseClient | null;
@@ -71,10 +74,13 @@ export function TestAppProvider({ repo, routing, fx, children }: { repo: TripRep
   const r = routing ?? createFakeRouting();
   const fxService = useMemo(() => fx ?? createFakeFx(), [fx]);
   const value = useMemo<AppValue>(
-    () => ({
-      mode: 'memory', repo, routing: r, fx: fxService, service: createTripService(repo, r), user: { email: 'test@example.com' }, authReady: true,
+    () => {
+      const service = createTripService(repo, r);
+      return {
+      mode: 'memory', repo, routing: r, fx: fxService, service, ai: createAiService({ repo, routing: r, tripService: service, budgetService: createBudgetService(repo, fxService) }), user: { email: 'test@example.com' }, authReady: true,
       supabase: null, supabaseUrl: '', settings, setSettings, signIn: async () => {}, signOut: async () => {},
-    }),
+      };
+    },
     [repo, r, fxService, settings],
   );
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -134,11 +140,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AppValue>(
-    () => ({
+    () => {
+      const service = createTripService(core.repo, core.routing);
+      return {
       mode,
       ...core,
       fx,
-      service: createTripService(core.repo, core.routing),
+      service,
+      ai: createAiService({ repo: core.repo, routing: core.routing, tripService: service, budgetService: createBudgetService(core.repo, fx) }),
       user,
       authReady,
       supabaseUrl,
@@ -164,7 +173,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await core.supabase?.auth.signOut();
         setUser(null);
       },
-    }),
+      };
+    },
     [mode, core, fx, user, authReady, supabaseUrl, settings],
   );
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

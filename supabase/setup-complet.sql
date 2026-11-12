@@ -1,5 +1,5 @@
 -- Carnet de route : création complète de la base (à coller dans Supabase > SQL Editor, puis Run).
--- Ne le lance qu'UNE seule fois sur un projet vide. Pour ajouter le budget à une base existante : voir docs/MISE-EN-PLACE.md.
+-- Ne le lance qu'UNE seule fois sur un projet vide. Pour ajouter une étape à une base existante : voir docs/MISE-EN-PLACE.md.
 
 -- ===== supabase/migrations/0001_schema.sql =====
 -- Carnet de route — schéma principal.
@@ -203,7 +203,6 @@ create policy owner_all on public.legs for all to authenticated
     and exists (select 1 from public.stops s where s.id = from_stop_id and s.user_id = auth.uid())
     and exists (select 1 from public.stops s where s.id = to_stop_id and s.user_id = auth.uid())
   );
-
 -- ===== supabase/migrations/0002_sharing.sql =====
 -- Partage du roadbook par lien secret en lecture seule.
 create table public.share_links (
@@ -284,7 +283,6 @@ begin
 end $$;
 revoke execute on function public.get_shared_roadbook(text) from public;
 grant execute on function public.get_shared_roadbook(text) to anon, authenticated;
-
 -- ===== supabase/migrations/0003_calendar.sql =====
 -- Abonnement calendrier (adresse webcal:// secrète, distincte du partage).
 create table public.calendar_links (
@@ -331,7 +329,6 @@ begin
 end $$;
 revoke execute on function public.get_calendar_bundle(text) from public, anon, authenticated;
 grant execute on function public.get_calendar_bundle(text) to service_role;
-
 -- ===== supabase/migrations/0004_privacy.sql =====
 -- Confidentialité : nom affiché choisi par l'utilisateur, aucun identifiant de compte ni e-mail sur la page partagée,
 -- fonctions internes fermées à l'API, lecture d'un voyage en un seul appel.
@@ -400,7 +397,6 @@ language sql stable security invoker set search_path = public as $$
 $$;
 revoke execute on function public.get_my_trip_bundle(uuid) from public, anon;
 grant execute on function public.get_my_trip_bundle(uuid) to authenticated;
-
 -- ===== supabase/migrations/0005_budget.sql =====
 -- Étape 2 : budget (enveloppe, voyageurs, lignes prévues, dépenses réelles).
 -- Le budget reste hors de trip_bundle_json : il ne doit jamais fuiter vers le partage ni le calendrier.
@@ -610,3 +606,39 @@ begin
 end $$;
 revoke execute on function public.save_expense(jsonb, uuid[]) from public, anon;
 grant execute on function public.save_expense(jsonb, uuid[]) to authenticated;
+-- ===== supabase/migrations/0006_ai_drafts.sql =====
+-- Étape 3 : brouillons de création de voyage avec l'IA.
+-- Table privée du propriétaire. Jamais lue par get_shared_roadbook, get_calendar_bundle ni trip_bundle_json
+-- et sans déclencheur touch_trip : le partage ne doit pas trahir l'activité des brouillons.
+
+create table public.ai_drafts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  mode text not null check (mode in ('known', 'surprise')),
+  stage text not null default 'brief' check (stage in (
+    'brief', 'ideas_requested', 'ideas_received', 'idea_chosen', 'itinerary_requested', 'itinerary_received', 'created')),
+  brief jsonb not null,
+  ideas jsonb,
+  chosen_idea_id text,
+  itinerary jsonb,
+  trip_id uuid references public.trips (id) on delete set null,
+  protocol_version integer not null default 1,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index on public.ai_drafts (user_id, updated_at desc);
+create index on public.ai_drafts (trip_id);
+
+alter table public.ai_drafts enable row level security;
+revoke all on public.ai_drafts from anon;
+grant select, insert, update, delete on public.ai_drafts to authenticated;
+
+create trigger set_updated_at before update on public.ai_drafts for each row execute function public.set_updated_at();
+
+create policy owner_all on public.ai_drafts for all to authenticated
+  using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and (trip_id is null or exists (select 1 from public.trips t where t.id = trip_id and t.user_id = auth.uid()))
+  );
