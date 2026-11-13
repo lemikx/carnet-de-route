@@ -97,7 +97,7 @@ export function TripsPage() {
 
       {creating && (
         <>
-          <TripForm submitLabel="Créer le voyage" disabled={create.saving} onSubmit={(v) => create.run(v)} onCancel={() => setCreating(false)} />
+          <TripForm linkDates submitLabel="Créer le voyage" disabled={create.saving} onSubmit={(v) => create.run(v)} onCancel={() => setCreating(false)} />
           <SaveError error={create.error} onRetry={create.retry} />
         </>
       )}

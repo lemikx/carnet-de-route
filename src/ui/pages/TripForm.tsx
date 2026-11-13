@@ -10,11 +10,13 @@ export interface TripFormValues {
 }
 
 export function TripForm({
-  initial, submitLabel, disabled, onSubmit, onCancel,
+  initial, submitLabel, disabled, linkDates = false, onSubmit, onCancel,
 }: {
   initial?: Partial<TripFormValues>;
   submitLabel: string;
   disabled?: boolean;
+  /** Création seulement : le retour suit le départ. En modification, on ne touche jamais au retour. */
+  linkDates?: boolean;
   onSubmit(v: TripFormValues): void;
   onCancel(): void;
 }) {
@@ -37,7 +39,7 @@ export function TripForm({
       <div className="row">
         <label>
           Date de départ
-          <input type="date" value={v.startDate} onChange={(e) => setV({ ...v, startDate: e.target.value, endDate: syncEndDate(e.target.value, v.endDate) })} required />
+          <input type="date" value={v.startDate} onChange={(e) => setV({ ...v, startDate: e.target.value, endDate: linkDates ? syncEndDate(e.target.value, v.endDate) : v.endDate })} required />
         </label>
         <label>
           Date de retour

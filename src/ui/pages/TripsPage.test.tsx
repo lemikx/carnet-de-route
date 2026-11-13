@@ -68,3 +68,17 @@ describe('TripsPage — dates liées', () => {
     expect(screen.getByLabelText('Date de retour')).toHaveValue('2026-12-03');
   });
 });
+
+describe('TripsPage — modification d’un voyage', () => {
+  it('décaler le départ ne recale pas le retour', async () => {
+    const repo = createMemoryRepository();
+    await repo.createTrip({ name: 'Japon', countries: ['JP'], startDate: '2026-12-01', endDate: '2026-12-10', localCurrency: 'JPY', homeTimezone: 'Europe/Paris', updatedAt: '' });
+    renderPage(repo);
+    const u = userEvent.setup();
+    await u.click(await screen.findByRole('button', { name: 'Modifier' }));
+    const dep = screen.getByLabelText('Date de départ');
+    await u.clear(dep);
+    await u.type(dep, '2026-12-12');
+    expect(screen.getByLabelText('Date de retour')).toHaveValue('2026-12-10');
+  });
+});
