@@ -6,6 +6,7 @@ import type { AiDraft } from '../../ai/types';
 import { datesBetween } from '../../domain/days';
 import { formatEur } from '../../domain/budget/money';
 import { formatDate } from '../../domain/format';
+import { PeriodBadge } from './PeriodBadge';
 import { useOnline } from '../../offline/useOnline';
 
 interface Created { tripId: string; toVerify: number; skippedBudgetLines: number }
@@ -74,6 +75,7 @@ export function ControlPanel({
         {visa.deadline && <li>Faire le visa avant le {formatDate(visa.deadline)}{visa.overdue ? ' (en retard)' : ''}</li>}
         {estimate > 0 && <li>Budget estimé (lignes en euros) : {formatEur(Math.round(estimate * 100))}</li>}
       </ul>
+      <PeriodBadge period={it.trip.bestPeriod} startDate={draft.brief.startDate} endDate={draft.brief.endDate} />
       <button type="button" className="btn btn-primary" disabled={busy || !online} onClick={() => void create()}>Créer le voyage</button>
       {onRepaste && <button type="button" className="btn" disabled={busy || !online} onClick={onRepaste}>Recoller une autre réponse</button>}
       {busy && (
