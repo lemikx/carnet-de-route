@@ -22,6 +22,7 @@ async function fillNewTrip() {
   await u.click(await screen.findByRole('button', { name: 'Nouveau voyage' }));
   await u.type(screen.getByLabelText('Nom du voyage'), 'Japon');
   await u.type(screen.getByLabelText('Date de départ'), '2026-12-03');
+  await u.clear(screen.getByLabelText('Date de retour'));
   await u.type(screen.getByLabelText('Date de retour'), '2026-12-10');
   await u.click(screen.getByRole('button', { name: 'Créer le voyage' }));
   return u;
@@ -55,5 +56,15 @@ describe('TripsPage', () => {
     fail = false;
     await u.click(screen.getByRole('button', { name: 'Réessayer' }));
     await waitFor(() => expect(screen.getByText('03/12/2026 → 10/12/2026')).toBeInTheDocument());
+  });
+});
+
+describe('TripsPage — dates liées', () => {
+  it('le retour se remplit avec le départ', async () => {
+    renderPage();
+    const u = userEvent.setup();
+    await u.click(await screen.findByRole('button', { name: 'Nouveau voyage' }));
+    await u.type(screen.getByLabelText('Date de départ'), '2026-12-03');
+    expect(screen.getByLabelText('Date de retour')).toHaveValue('2026-12-03');
   });
 });

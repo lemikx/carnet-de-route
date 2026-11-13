@@ -32,6 +32,7 @@ async function toDates(u: ReturnType<typeof userEvent.setup>) {
 }
 async function fillDates(u: ReturnType<typeof userEvent.setup>, start = '2026-12-20', end = '2026-12-24') {
   await u.type(screen.getByLabelText('Date de départ'), start);
+  await u.clear(screen.getByLabelText('Date de retour'));
   await u.type(screen.getByLabelText('Date de retour'), end);
   await next(u);
 }
@@ -126,5 +127,24 @@ describe('QuestionnairePage', () => {
     fail = false;
     await u.click(screen.getByRole('button', { name: 'Réessayer' }));
     await waitFor(() => expect(screen.getByTestId('where').textContent).toMatch(/^\/ia\//));
+  });
+});
+
+describe('QuestionnairePage — dates liées', () => {
+  it('le retour suit le départ sans écraser un retour valide', async () => {
+    const { u } = renderPage();
+    await skip(u);
+    const dep = screen.getByLabelText('Date de départ');
+    const ret = screen.getByLabelText('Date de retour');
+    await u.type(dep, '2026-12-20');
+    expect(ret).toHaveValue('2026-12-20');
+    await u.clear(ret);
+    await u.type(ret, '2026-12-24');
+    await u.clear(dep);
+    await u.type(dep, '2026-12-18');
+    expect(ret).toHaveValue('2026-12-24');
+    await u.clear(dep);
+    await u.type(dep, '2026-12-28');
+    expect(ret).toHaveValue('2026-12-28');
   });
 });

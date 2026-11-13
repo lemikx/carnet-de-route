@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { syncEndDate } from '../../domain/days';
 
 export interface TripFormValues {
   name: string;
@@ -36,7 +37,7 @@ export function TripForm({
       <div className="row">
         <label>
           Date de départ
-          <input type="date" value={v.startDate} onChange={set('startDate')} required />
+          <input type="date" value={v.startDate} onChange={(e) => setV({ ...v, startDate: e.target.value, endDate: syncEndDate(e.target.value, v.endDate) })} required />
         </label>
         <label>
           Date de retour

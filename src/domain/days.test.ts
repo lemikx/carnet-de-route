@@ -1,4 +1,4 @@
-import { datesBetween, diffDays } from './days';
+import { datesBetween, diffDays, syncEndDate } from './days';
 import type { Day, Stop } from './types';
 
 const day = (date: string): Day => ({ id: 'd-' + date, tripId: 't', date, title: '', note: '' });
@@ -27,5 +27,20 @@ describe('diffDays', () => {
   it('signale les jours supprimés qui contiennent des lieux', () => {
     const r = diffDays(existing, '2026-12-03', '2026-12-07', [stopOn('d-2026-12-02')]);
     expect(r.nonEmptyToDelete.map((d) => d.date)).toEqual(['2026-12-02']);
+  });
+});
+
+describe('syncEndDate', () => {
+  it('remplit le retour avec le départ quand il est vide ou antérieur', () => {
+    expect(syncEndDate('2026-12-20', '')).toBe('2026-12-20');
+    expect(syncEndDate('2026-12-20', '2026-12-10')).toBe('2026-12-20');
+  });
+  it('garde un retour déjà valide', () => {
+    expect(syncEndDate('2026-12-20', '2026-12-24')).toBe('2026-12-24');
+    expect(syncEndDate('2026-12-20', '2026-12-20')).toBe('2026-12-20');
+  });
+  it('départ vide ou invalide : retour inchangé', () => {
+    expect(syncEndDate('', '2026-12-24')).toBe('2026-12-24');
+    expect(syncEndDate('abc', '')).toBe('');
   });
 });
