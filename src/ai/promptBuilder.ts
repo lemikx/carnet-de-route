@@ -22,11 +22,12 @@ const IDEAS_FORMAT = `{
         "processingDaysMax": 10,
         "officialUrl": "https://site-officiel",
         "notes": "Précisions"
-      }
+      },
+      "bestPeriod": { "text": "Meilleure période pour visiter ce pays, en 1 à 3 phrases (météo, affluence)", "goodMonths": [11, 12, 1, 2], "avoidMonths": [3, 4] }
     }
   ]
 }
-("required" vaut true, false ou "unknown" ; si un délai est inconnu, omets simplement ce champ.)`;
+("required" vaut true, false ou "unknown" ; "goodMonths" et "avoidMonths" sont des numéros de mois de 1 à 12 ; si un délai est inconnu, omets simplement ce champ.)`;
 
 const ITINERARY_FORMAT = `{
   "v": 1,
@@ -35,7 +36,8 @@ const ITINERARY_FORMAT = `{
     "name": "Nom du voyage",
     "countries": ["Pays"],
     "currency": "JPY (devise locale, code ISO à 3 lettres)",
-    "visa": { "required": true, "type": "", "processingDaysMin": 3, "processingDaysMax": 10, "officialUrl": "https://site-officiel", "notes": "" }
+    "visa": { "required": true, "type": "", "processingDaysMin": 3, "processingDaysMax": 10, "officialUrl": "https://site-officiel", "notes": "" },
+    "bestPeriod": { "text": "Meilleure période pour visiter ce pays, en 1 à 3 phrases", "goodMonths": [11, 12, 1, 2], "avoidMonths": [3, 4] }
   },
   "days": [
     {
@@ -91,7 +93,8 @@ const RULES = `Règles de réponse :
 - Utilise la recherche web pour vérifier les visas (délais de traitement officiels) et les prix.
 - Réponds uniquement avec un seul bloc \`\`\`json, sans texte avant ni après.
 - Heures au format HH:mm, durées en minutes, montants en nombres, dates AAAA-MM-JJ.
-- Chaque lieu doit avoir son nom exact, sa ville et son pays.`;
+- Chaque lieu doit avoir son nom exact, sa ville et son pays.
+- Pour « bestPeriod » : numéros de mois de 1 à 12 (1 = janvier), appuie-toi sur la recherche web.`;
 
 export function buildIdeasPrompt(brief: Brief, today: string): string {
   return `Tu es un conseiller de voyage expert. Nous sommes le ${today}.

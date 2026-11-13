@@ -12,6 +12,12 @@ export interface VisaInfo {
   notes: string;
 }
 
+export interface BestPeriod {
+  text: string;
+  goodMonths: number[];
+  avoidMonths: number[];
+}
+
 export interface Idea {
   id: string;
   destination: string;
@@ -22,6 +28,7 @@ export interface Idea {
   budgetPerPersonEur: number | null;
   whyItMatches: string;
   visa: VisaInfo;
+  bestPeriod: BestPeriod | null;
 }
 
 export interface IdeasResponse {
@@ -69,7 +76,7 @@ export interface ItineraryBudgetLine {
 export interface ItineraryResponse {
   v: 1;
   kind: 'itinerary';
-  trip: { name: string; countries: string[]; currency: string; visa: VisaInfo };
+  trip: { name: string; countries: string[]; currency: string; visa: VisaInfo; bestPeriod: BestPeriod | null };
   days: ItineraryDay[];
   checklist: ItineraryChecklistItem[];
   budget: ItineraryBudgetLine[];

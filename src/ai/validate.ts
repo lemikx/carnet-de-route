@@ -3,7 +3,7 @@ import { BUDGET_CATEGORIES } from '../domain/budget/types';
 import type { ChecklistCategory, StopKind } from '../domain/types';
 import { LIMITS } from './limits';
 import type {
-  Idea, IdeasResponse, ItineraryBudgetLine, ItineraryChecklistItem, ItineraryDay, ItineraryResponse, ItineraryStop, VisaInfo,
+  BestPeriod, Idea, IdeasResponse, ItineraryBudgetLine, ItineraryChecklistItem, ItineraryDay, ItineraryResponse, ItineraryStop, VisaInfo,
 } from './types';
 
 type Obj = Record<string, unknown>;
@@ -66,6 +66,31 @@ function parseVisa(raw: unknown, where: string, errors: string[], warnings: stri
   };
 }
 
+function monthList(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  const set = new Set<number>();
+  for (const m of raw.slice(0, 100)) if (typeof m === 'number' && Number.isInteger(m) && m >= 1 && m <= 12) set.add(m);
+  return [...set].sort((a, b) => a - b);
+}
+
+/** Meilleure période (facultative) : mois invalides ignorés avec avertissement, jamais d'erreur bloquante. */
+function parseBestPeriod(raw: unknown, where: string, warnings: string[]): BestPeriod | null {
+  if (raw === null || raw === undefined) return null;
+  if (!isObj(raw)) {
+    warnings.push(`${where} : « bestPeriod » ignorée (format invalide).`);
+    return null;
+  }
+  const good = monthList(raw.goodMonths);
+  const avoid = monthList(raw.avoidMonths);
+  const given = (x: unknown) => (Array.isArray(x) ? x.length : 0);
+  if (good.length < given(raw.goodMonths) || avoid.length < given(raw.avoidMonths)) {
+    warnings.push(`${where} : mois invalides ou en double ignorés dans « bestPeriod ».`);
+  }
+  const text = cleanText(raw.text);
+  if (!text && good.length === 0 && avoid.length === 0) return null;
+  return { text, goodMonths: good, avoidMonths: avoid };
+}
+
 export function validateIdeas(raw: unknown): Out<IdeasResponse> {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -95,6 +120,7 @@ export function validateIdeas(raw: unknown): Out<IdeasResponse> {
       budgetPerPersonEur: budget,
       whyItMatches: cleanText(it.whyItMatches),
       visa: parseVisa(it.visa, where, errors, warnings),
+      bestPeriod: parseBestPeriod(it.bestPeriod, where, warnings),
     });
   });
   if (errors.length) return { errors };
@@ -192,6 +218,7 @@ export function validateItinerary(raw: unknown, opts: { tripDays: number }): Out
     countries: Array.isArray(t.countries) ? t.countries.slice(0, 20).map((c) => cleanText(c, 60)).filter(Boolean) : [],
     currency: /^[A-Z]{3}$/.test(cur) ? cur : 'EUR',
     visa: parseVisa(t.visa, 'Voyage', errors, warnings),
+    bestPeriod: parseBestPeriod(t.bestPeriod, 'Voyage', warnings),
   };
 
   if (errors.length) return { errors };
