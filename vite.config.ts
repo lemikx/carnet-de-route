@@ -22,7 +22,7 @@ export default defineConfig({
         lang: 'fr',
         display: 'standalone',
         start_url: '.',
-        theme_color: '#1f4e79',
+        theme_color: '#4e6b51',
         background_color: '#ffffff',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -30,6 +30,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        globPatterns: ['**/*.{js,css,html,woff2}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/([abc]\.)?tile\.openstreetmap\.org\/.*/,
