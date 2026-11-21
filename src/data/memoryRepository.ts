@@ -22,6 +22,7 @@ interface Store {
   budgetLines: BudgetLine[];
   expenses: Expense[];
   drafts: AiDraft[];
+  connector?: { createdAt: string } | null;
 }
 
 export interface KeyStorage {
@@ -345,6 +346,18 @@ export function createMemoryRepository(opts: { seed?: TripBundle[]; storage?: Ke
     },
     async deleteDraft(id) {
       store.drafts = store.drafts.filter((x) => x.id !== id);
+      return done(undefined);
+    },
+    async getConnectorLink() {
+      return store.connector ? { active: true, createdAt: store.connector.createdAt } : null;
+    },
+    async createConnectorLink() {
+      store.connector = { createdAt: now() };
+      persist();
+      return randomToken() + randomToken();
+    },
+    async revokeConnectorLink() {
+      store.connector = null;
       return done(undefined);
     },
     async getDisplayName() {

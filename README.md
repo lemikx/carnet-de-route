@@ -2,7 +2,7 @@
 
 Appli web installable (Mac + iPhone) pour préparer un voyage à l'étranger et produire un **roadbook complet** :
 itinéraire jour par jour, trajets calculés, cartes, checklist, réservations, contacts, roadbook HTML/PDF,
-partage par lien en lecture seule, export calendrier (fichier `.ics` ou abonnement) et **budget** (enveloppe, lignes prévues, dépenses multi-devises, partage des frais, pistes d'économie) et **création de voyage avec l'IA** (questionnaire, copier-coller avec Claude, visas, lieux placés automatiquement).
+partage par lien en lecture seule, export calendrier (fichier `.ics` ou abonnement) et **budget** (enveloppe, lignes prévues, dépenses multi-devises, partage des frais, pistes d'économie) et **création de voyage avec l'IA** (questionnaire, copier-coller avec Claude ou **connecteur Claude** sans copier-coller, visas, lieux placés automatiquement).
 
 - Spécification : [`docs/superpowers/specs/2026-11-11-carnet-de-route-etape1-design.md`](docs/superpowers/specs/2026-11-11-carnet-de-route-etape1-design.md)
 - Spécification de la création avec l'IA : [`docs/superpowers/specs/2026-11-12-carnet-de-route-etape3-ia-design.md`](docs/superpowers/specs/2026-11-12-carnet-de-route-etape3-ia-design.md)

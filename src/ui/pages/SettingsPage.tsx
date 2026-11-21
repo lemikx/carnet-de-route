@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useApp } from '../../app/AppContext';
 import { useOnline } from '../../offline/useOnline';
 import { SaveError } from '../common/SaveError';
+import { ConnectorSection } from './ConnectorSection';
 import { useSave } from '../common/useSave';
 
 export function SettingsPage() {
-  const { settings, setSettings, user, signOut, mode, repo } = useApp();
+  const { settings, setSettings, user, signOut, mode, repo, supabaseUrl } = useApp();
   const online = useOnline();
   const hours = settings.heavyThresholdMin / 60;
   const [name, setName] = useState('');
@@ -49,6 +50,7 @@ export function SettingsPage() {
         {saved && <p role="status" className="muted">Nom enregistré.</p>}
         <SaveError error={save.error} onRetry={save.retry} />
       </form>
+      {mode === 'supabase' && <ConnectorSection repo={repo} serverUrl={`${supabaseUrl}/functions/v1/claude-connector`} online={online} />}
       {mode === 'memory' && (
         <p className="notice">Mode démonstration : les données restent dans ce navigateur, sans synchronisation.</p>
       )}

@@ -152,6 +152,16 @@ export function createSupabaseRepository(client: SupabaseClient): TripRepository
     },
     saveDraft: (d) => save<AiDraft>('ai_drafts', d),
     deleteDraft: (id) => remove('ai_drafts', [id]),
+    async getConnectorLink() {
+      const r = check(await client.from('connector_links').select('created_at').eq('active', true).maybeSingle()) as Row | null;
+      return r ? { active: true, createdAt: String(r.created_at) } : null;
+    },
+    async createConnectorLink() {
+      return String(check(await client.rpc('create_connector_link')));
+    },
+    async revokeConnectorLink() {
+      check(await client.rpc('revoke_connector_link'));
+    },
     async getDisplayName() {
       const r = check(await client.from('profiles').select('display_name').maybeSingle()) as Row | null;
       return String(r?.display_name ?? '');

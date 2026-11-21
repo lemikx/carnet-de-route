@@ -91,6 +91,10 @@ export interface TripRepository {
   getDraft(id: string): Promise<AiDraft>;
   saveDraft(d: AiDraft | New<AiDraft>): Promise<AiDraft>;
   deleteDraft(id: string): Promise<void>;
+  // Connecteur Claude (adresse secrète) : le jeton n'est renvoyé qu'à la création.
+  getConnectorLink(): Promise<{ active: boolean; createdAt: string } | null>;
+  createConnectorLink(): Promise<string>;
+  revokeConnectorLink(): Promise<void>;
 }
 
 export const DEFAULT_OWNER_NAME = 'Voyageur';
