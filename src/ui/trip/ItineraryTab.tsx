@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   closestCenter, DndContext, KeyboardSensor, PointerSensor, TouchSensor, useDroppable, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core';
@@ -16,6 +16,7 @@ import { SaveError } from '../common/SaveError';
 import { useSave } from '../common/useSave';
 import { appleMapsUrl } from '../map/appleMaps';
 import { MapView } from '../map/MapView';
+import { findPhotoForStop } from '../../media/autoPhoto';
 import { KIND_LABELS } from './labels';
 import { LegRow } from './LegRow';
 import { StopEditor } from './StopEditor';
@@ -107,11 +108,25 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
 
   async function save(dayId: string, input: StopInput, existing?: Stop) {
     await action.run(async () => {
+      if (!input.photoUrl && input.kind !== 'lodging') input = { ...input, ...(await findPhotoForStop(input.title, input.address)) };
       const b = await (existing ? service.updateStop({ ...existing, ...input }) : service.addStop(dayId, input));
       setEditing(null);
       return b;
     });
   }
+
+  // Photos automatiques : une seule tentative par étape, une étape à la fois, jamais pendant une modification.
+  const triedPhotos = useRef(new Set<string>());
+  useEffect(() => {
+    if (!online || editing || action.saving) return;
+    const next = bundle.stops.find((s) => !s.photoUrl && s.kind !== 'lodging' && s.title && !triedPhotos.current.has(s.id));
+    if (!next) return;
+    triedPhotos.current.add(next.id);
+    void (async () => {
+      const photo = await findPhotoForStop(next.title, next.address);
+      if (photo) setBundle(await service.updateStop({ ...next, ...photo }));
+    })();
+  }, [bundle.stops, online, editing, action.saving, service, setBundle]);
 
   function onDragEnd(e: DragEndEvent) {
     const activeId = String(e.active.id);
