@@ -22,5 +22,8 @@ function copy(fromDir, toDir, filter) {
 }
 
 copy('src/domain', 'domain', () => true);
+copy('src/domain/budget', 'domain/budget', () => true);
 copy('src/data', 'data', (f) => f === 'supabaseMapping.ts');
+// Validation et consignes de l'IA, partagées avec le connecteur Claude.
+copy('src/ai', 'ai', (f) => ['types.ts', 'limits.ts', 'options.ts', 'validate.ts', 'responseParser.ts', 'promptBuilder.ts'].includes(f));
 console.log('Code métier copié dans supabase/functions/_shared');

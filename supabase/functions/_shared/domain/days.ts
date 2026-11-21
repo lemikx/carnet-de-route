@@ -25,3 +25,10 @@ export function diffDays(
   const usedDays = new Set(stops.map((s) => s.dayId));
   return { toCreate, toDelete, nonEmptyToDelete: toDelete.filter((d) => usedDays.has(d.id)) };
 }
+
+/** Quand on choisit le départ, le retour reprend la même date s'il est vide ou antérieur ; un retour valide n'est jamais écrasé. */
+export function syncEndDate(start: string, end: string): string {
+  if (!DateTime.fromISO(start, { zone: 'utc' }).isValid) return end;
+  if (end === '' || end < start) return start;
+  return end;
+}
