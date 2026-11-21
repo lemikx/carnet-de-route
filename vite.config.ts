@@ -5,6 +5,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   base: '/carnet-de-route/',
+  define: {
+    // Version affichée dans l'appli : commit déployé (GitHub Actions) ou « dev » en local.
+    __APP_VERSION__: JSON.stringify((process.env.GITHUB_SHA ?? 'dev').slice(0, 7)),
+  },
   plugins: [
     react(),
     VitePWA({

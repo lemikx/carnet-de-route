@@ -51,7 +51,11 @@ export function createAiService(deps: {
     },
 
     async buildRequest(draftId) {
-      const d = await repo.getDraft(draftId);
+      let d = await repo.getDraft(draftId);
+      // Brouillon créé avant la reconnaissance de « surprends-moi » : on le remet en mode surprise.
+      if (d.mode === 'known' && d.stage === 'brief' && !normalizeDestination(d.brief.destination)) {
+        d = await save(d, { mode: 'surprise', brief: { ...d.brief, destination: null } });
+      }
       if (d.mode === 'surprise' && d.chosenIdeaId === null) {
         need(d, ['brief', 'ideas_requested', 'ideas_received']);
         const prompt = buildIdeasPrompt(d.brief, today());

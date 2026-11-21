@@ -229,3 +229,4 @@ th { color: var(--muted); font-weight: 600; }
 .period-good { border-left-color: var(--ok); }
 .period-avoid { border-left-color: #d98300; background: var(--warning-bg); color: var(--warning-text); }
 .period-average { border-left-color: var(--muted); }
+.app-version { text-align: center; font-size: 0.75rem; padding: 16px 0 24px; }
