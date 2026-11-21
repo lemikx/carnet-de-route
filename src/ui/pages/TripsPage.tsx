@@ -1,7 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../app/AppContext';
 import { formatDate, formatDayLabel } from '../../domain/format';
+import { orderedStops } from '../../domain/legs';
 import type { Day, Trip } from '../../domain/types';
 import { NeedsConfirmationError } from '../../services/tripService';
 import { useOnline } from '../../offline/useOnline';
@@ -11,6 +12,26 @@ import { SaveError } from '../common/SaveError';
 import { useAsync } from '../common/useAsync';
 import { useSave } from '../common/useSave';
 import { TripForm, type TripFormValues } from './TripForm';
+
+/** Couvertures des voyages : photo de la première étape qui en a une. Chargées une fois par voyage, sans jamais bloquer l'affichage. */
+function useCovers(trips: Trip[]): Record<string, string | null> {
+  const { repo } = useApp();
+  const [covers, setCovers] = useState<Record<string, string | null>>({});
+  const asked = useRef(new Set<string>());
+  useEffect(() => {
+    let alive = true;
+    for (const t of trips) {
+      if (asked.current.has(t.id)) continue;
+      asked.current.add(t.id);
+      void repo.getBundle(t.id).then((b) => {
+        const url = orderedStops(b.days, b.stops).find((s) => s.photoUrl)?.photoUrl ?? null;
+        if (alive) setCovers((c) => ({ ...c, [t.id]: url }));
+      }).catch(() => { /* la couverture est facultative */ });
+    }
+    return () => { alive = false; };
+  }, [trips, repo]);
+  return covers;
+}
 
 const splitCountries = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
 
@@ -79,6 +100,7 @@ export function TripsPage() {
   );
 
   const list = trips.data ?? [];
+  const covers = useCovers(list);
   return (
     <main className="page">
       <div className="page-head">
@@ -125,9 +147,16 @@ export function TripsPage() {
           ) : (
             <li key={t.id} className="card trip-card">
               <Link to={`/voyage/${t.id}/itineraire`} className="trip-link">
-                <strong>{t.name}</strong>
-                <span className="muted">{formatDate(t.startDate)} → {formatDate(t.endDate)}</span>
-                {t.countries.length > 0 && <span className="muted">{t.countries.join(', ')}</span>}
+                {covers[t.id] ? (
+                  <img className="trip-cover" src={covers[t.id]!} alt="" loading="lazy" />
+                ) : (
+                  <span className="trip-cover trip-cover-empty" aria-hidden="true">{t.name.trim().charAt(0).toUpperCase()}</span>
+                )}
+                <span className="trip-info">
+                  <strong>{t.name}</strong>
+                  <span className="muted">{formatDate(t.startDate)} → {formatDate(t.endDate)}</span>
+                  {t.countries.length > 0 && <span className="muted">{t.countries.join(', ')}</span>}
+                </span>
               </Link>
               <div className="trip-actions">
                 <button className="btn btn-small" onClick={() => setEditing(t)} disabled={!online}>Modifier</button>

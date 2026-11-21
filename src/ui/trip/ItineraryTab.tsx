@@ -44,11 +44,11 @@ function StopCard({
   return (
     <li ref={setNodeRef} style={style} className="stop" data-testid="stop">
       <button type="button" className="drag-handle" aria-label={`Déplacer ${stop.title}`} {...attributes} {...listeners} disabled={disabled}>⋮⋮</button>
-      <div className="stop-main">
+      <div className={stop.photoUrl ? 'stop-main has-thumb' : 'stop-main'}>
         <div className="stop-title">{stop.title}</div>
         {stop.photoUrl && (
           <figure className="stop-photo">
-            <img src={stop.photoUrl} alt="" loading="lazy" />
+            <img className="stop-thumb" src={stop.photoUrl} alt="" loading="lazy" />
             <PhotoCredit credit={stop.photoCredit} license={stop.photoLicense} licenseUrl={stop.photoLicenseUrl} />
           </figure>
         )}
@@ -200,7 +200,7 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
       <SaveError error={action.error} onRetry={action.retry} />
       {action.saving && <p className="muted" role="status">Enregistrement et calcul des trajets…</p>}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        {days.map((day) => {
+        {days.map((day, dayIndex) => {
           const stops = stopsOf(day.id);
           const schedule = computeDaySchedule(day, stops, bundle.legs, settings.heavyThresholdMin);
           const timing = new Map(schedule.timings.map((t) => [t.stopId, t]));
@@ -209,6 +209,7 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
           return (
             <section key={day.id} className="day" aria-label={formatDayLabel(day.date)}>
               <div className="day-head">
+                <span className="day-pill" aria-hidden="true"><small>Jour</small><b>{dayIndex + 1}</b></span>
                 <h2>{formatDayLabel(day.date)}</h2>
                 <input className="day-title-input" aria-label="Titre du jour" placeholder="Titre (ex. Kyoto)" defaultValue={day.title}
                   disabled={busy} onBlur={(e) => renameDay(day, e.target.value.trim())} />
