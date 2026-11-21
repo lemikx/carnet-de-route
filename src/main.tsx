@@ -5,6 +5,9 @@ import 'leaflet/dist/leaflet.css';
 import './ui/app.css';
 import { AppProvider } from './app/AppContext';
 import { router } from './app/router';
+import { setupAutoUpdate } from './app/pwa';
+
+if ('serviceWorker' in navigator) setupAutoUpdate();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
