@@ -9,7 +9,7 @@ export interface KeyValueStore {
 export const idbStore: KeyValueStore = { get: (k) => idbGet(k), set: (k, v) => idbSet(k, v) };
 
 const READS = { listTrips: () => 'trips', getBundle: (id: string) => `bundle:${id}`, getSharedRoadbook: (t: string) => `shared:${t}`, getBudget: (id: string) => `budget:${id}`, listDrafts: () => 'drafts', getDraft: (id: string) => `draft:${id}` } as const;
-const OPTIONAL_READS: Record<string, unknown> = { getShareLink: null, getCalendarLink: null, getDisplayName: '' };
+const OPTIONAL_READS: Record<string, unknown> = { getShareLink: null, getCalendarLink: null, getDisplayName: '', getConnectorLink: null };
 
 /** Enveloppe un dépôt : lectures mises en cache, écritures refusées hors ligne. */
 export function createCachedRepository(inner: TripRepository, isOnline: () => boolean, store: KeyValueStore = idbStore): TripRepository {

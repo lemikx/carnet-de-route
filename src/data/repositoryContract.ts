@@ -278,5 +278,19 @@ export function runRepositoryContract(name: string, make: () => Promise<TripRepo
         expect(json).not.toMatch(/brief-secret|brief|draft/);
       });
     });
+
+    describe('connecteur Claude', () => {
+      it('crée, remplace et révoque l’adresse secrète', async () => {
+        const repo = await make();
+        expect(await repo.getConnectorLink()).toBeNull();
+        const t1 = await repo.createConnectorLink();
+        expect(t1).toMatch(/^[0-9a-f]{64}$/);
+        expect((await repo.getConnectorLink())?.active).toBe(true);
+        const t2 = await repo.createConnectorLink();
+        expect(t2).not.toBe(t1);
+        await repo.revokeConnectorLink();
+        expect(await repo.getConnectorLink()).toBeNull();
+      });
+    });
   });
 }

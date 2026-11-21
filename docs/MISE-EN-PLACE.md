@@ -199,3 +199,19 @@ Le service d'e-mails intégré de Supabase n'envoie que quelques e-mails par heu
 5. Tester : se déconnecter de l'appli et demander un lien de connexion.
 
 Pour donner un compte à une autre personne, il faut un nom de domaine vérifié chez Resend (et une adresse d'expéditeur de ce domaine).
+
+---
+
+## Connecteur Claude « Carnet de route »
+Permet de dire à Claude (claude.ai web ou mobile, Claude Code) : « crée-moi un voyage à Madère du 8 au 22 mars ». Claude fait ses recherches puis dépose l'itinéraire dans **Brouillons IA** ; tu vérifies et tu cliques sur **Créer le voyage**. Claude ne peut ni lire, ni modifier, ni supprimer tes voyages.
+
+1. **Base** : Supabase → SQL Editor → New query → coller tout `supabase/migrations/0007_connector.sql` → **Run** (« Success. No rows returned »).
+2. **Fonction serveur** (Terminal, dans le dossier du projet) :
+   ```bash
+   git pull && npm run sync:domain && supabase functions deploy claude-connector --no-verify-jwt
+   ```
+3. **Adresse secrète** : appli → **Réglages → Connecteur Claude → Créer l'adresse du connecteur**. Copie l'adresse du serveur et la valeur de l'en-tête (affichée une seule fois).
+4. **claude.ai** → **Personnaliser → Connecteurs → Ajouter un connecteur personnalisé** : nom « Carnet de route », adresse du serveur, connexion **No sign in**, puis **Request headers** : `Authorization` = la valeur copiée.
+5. **Essai** : dans une conversation, active le connecteur et la recherche web, puis demande « Avec Carnet de route, crée-moi un voyage à … du … au … ». Le lien du brouillon s'affiche dans la réponse de Claude.
+
+Révocation : **Réglages → Connecteur Claude → Révoquer** (effet immédiat). Au plus 20 brouillons déposés par jour.
