@@ -40,3 +40,16 @@ export function withTravelerCount(brief: Brief, adults: number, children: number
   const travelers = Array.from({ length: total }, (_, i) => brief.travelers[i] ?? { name: '', nationality: 'FR' });
   return { ...brief, adults, children, travelers };
 }
+
+/** Reprend les réponses d'un questionnaire précédent : destination vidée, dates gardées seulement si encore à venir. */
+export function briefFromPrevious(prev: Brief, today: string): Brief {
+  const future = prev.startDate >= today && prev.endDate >= prev.startDate;
+  return {
+    ...emptyBrief(),
+    ...prev,
+    destination: null,
+    startDate: future ? prev.startDate : '',
+    endDate: future ? prev.endDate : '',
+    travelers: prev.travelers.map((t) => ({ ...t })),
+  };
+}
