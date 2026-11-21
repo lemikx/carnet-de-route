@@ -240,9 +240,9 @@ describe('TripService', () => {
 });
 
 describe('trajet introuvable entre lieux proches', () => {
-  async function legBetween(a: [number, number], b: [number, number]) {
+  async function legBetween(a: [number, number], b: [number, number], code: 'NO_ROUTE' | 'QUOTA' = 'NO_ROUTE') {
     const repo = createMemoryRepository();
-    const noRoute = { ...createFakeRouting(), route: async () => { const { RoutingError } = await import('../routing/RoutingService'); throw new RoutingError('NO_ROUTE', 'x'); } };
+    const noRoute = { ...createFakeRouting(), route: async () => { const { RoutingError } = await import('../routing/RoutingService'); throw new RoutingError(code, 'x'); } };
     const service = createTripService(repo, noRoute);
     const t = await service.createTrip(tripInput());
     await service.addStop(t.days[0].id, stop('A', ...a));
@@ -254,13 +254,23 @@ describe('trajet introuvable entre lieux proches', () => {
     expect(leg).toMatchObject({ mode: 'walk', error: null });
     expect(leg.durationMin).toBeGreaterThan(0);
   });
-  it('entre 1,2 et 20 km : en voiture, durée estimée, sans erreur', async () => {
+  it('entre 1,2 et 40 km : en voiture, durée estimée, sans erreur', async () => {
     const leg = await legBetween([32.65, -16.91], [32.70, -16.80]);
     expect(leg).toMatchObject({ mode: 'car', error: null });
     expect(leg.durationMin).toBeGreaterThan(5);
   });
-  it('au-delà de 20 km : erreur conservée (mer probable)', async () => {
+  it('au-delà de 40 km : erreur conservée (mer probable)', async () => {
     const leg = await legBetween([32.65, -16.91], [33.06, -16.34]);
     expect(leg.error).toContain('Aucun trajet routier');
   });
+  it('à 21 km sur la même île : estimé en voiture', async () => {
+    const leg = await legBetween([32.735, -17.05], [32.8136, -17.2627]);
+    expect(leg).toMatchObject({ mode: 'car', error: null });
+  });
+  it('limite par minute atteinte : durée estimée au lieu d’une erreur', async () => {
+    const leg = await legBetween([32.65, -16.91], [32.70, -16.80], 'QUOTA');
+    expect(leg).toMatchObject({ error: null });
+    expect(leg.durationMin).toBeGreaterThan(5);
+  });
 });
+

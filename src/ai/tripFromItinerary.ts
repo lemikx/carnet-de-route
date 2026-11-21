@@ -87,7 +87,8 @@ export async function createTripFromItinerary(
           lon: located ? res.lon : null,
           timezone: res.timezone ?? bundle.trip.homeTimezone,
           startTime: stop.startTime,
-          durationMin: stop.durationMin,
+          // Départ en avion, ferry… : la durée est celle du trajet qui suit, pas de l'étape (sinon comptée deux fois).
+          durationMin: transportOf(stop) ? null : stop.durationMin,
           note: res.status === 'ok' ? stop.note : [stop.note, located ? 'À vérifier : lieu éloigné des autres étapes.' : 'À vérifier : lieu non localisé automatiquement.'].filter(Boolean).join('\n'),
           phone: '',
           url: '',
