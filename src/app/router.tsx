@@ -3,6 +3,7 @@ import { useApp } from './AppContext';
 import { DraftPage } from '../ui/ai/DraftPage';
 import { QuestionnairePage } from '../ui/ai/QuestionnairePage';
 import { OfflineBanner } from '../ui/common/OfflineBanner';
+import { AuthLanding } from '../ui/pages/AuthLanding';
 import { LoginPage } from '../ui/pages/LoginPage';
 import { RoadbookPage } from '../ui/pages/RoadbookPage';
 import { SettingsPage } from '../ui/pages/SettingsPage';
@@ -61,4 +62,6 @@ export const router = createHashRouter([
       { path: '/voyage/:id/:onglet?', element: <TripPage /> },
     ],
   },
+  // Retour du lien de connexion (#access_token=… ou #error=…) et adresses inconnues : jamais d'erreur 404.
+  { path: '*', element: <AuthLanding /> },
 ]);
