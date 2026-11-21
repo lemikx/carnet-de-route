@@ -110,7 +110,7 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
 
   async function save(dayId: string, input: StopInput, existing?: Stop) {
     await action.run(async () => {
-      if (!input.photoUrl && input.kind !== 'lodging') input = { ...input, ...(await findPhotoForStop(input.title, input.address)) };
+      if (!input.photoUrl) input = { ...input, ...(await findPhotoForStop(input.title, input.address, undefined, input.kind)) };
       const b = await (existing ? service.updateStop({ ...existing, ...input }) : service.addStop(dayId, input));
       setEditing(null);
       return b;
@@ -130,7 +130,7 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
   }, []);
   useEffect(() => {
     if (!canRun.current || photoRunning.current) return;
-    const wants = (s: Stop) => s.kind !== 'lodging' && !!s.title && !triedPhotos.current.has(s.id)
+    const wants = (s: Stop) => !!s.title && !triedPhotos.current.has(s.id)
       && (s.photoUrl ? isBadPhotoUrl(s.photoUrl) || isTransportStop(s.title) : !isTransportStop(s.title));
     if (!bundle.stops.some(wants)) return;
     photoRunning.current = true;
@@ -145,7 +145,7 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
           await fillMissingPhotos({
             stopIds,
             getStop: async (id) => (await repo.getBundle(tripId)).stops.find((s) => s.id === id) ?? null,
-            find: (stop) => findPhotoForStop(stop.title, stop.address),
+            find: (stop) => findPhotoForStop(stop.title, stop.address, undefined, stop.kind),
             save: async (stop, photo) => {
               const b = await service.updateStop({ ...stop, ...(photo ?? { photoUrl: null, photoCredit: null, photoLicense: null, photoLicenseUrl: null }) });
               if (mounted.current) setBundle(b);

@@ -29,7 +29,7 @@ describe('fillMissingPhotos', () => {
     expect(tried).toEqual(['A', 'B']);
   });
 
-  it('ignore hébergements, titres vides et étapes déjà illustrées', async () => {
+  it('traite les hébergements, ignore titres vides et étapes déjà illustrées', async () => {
     const stops = [
       makeStop({ id: 'L', title: 'Hôtel', kind: 'lodging' }),
       makeStop({ id: 'E', title: '  ' }),
@@ -39,8 +39,8 @@ describe('fillMissingPhotos', () => {
     const searched: string[] = [];
     const { opts, saved } = setup(stops, async (s) => { searched.push(s.id); return photo(s.id); });
     await fillMissingPhotos(opts);
-    expect(searched).toEqual(['OK']);
-    expect(saved).toEqual(['OK']);
+    expect(searched).toEqual(['L', 'OK']);
+    expect(saved).toEqual(['L', 'OK']);
   });
 
   it("s'arrête quand isCancelled renvoie vrai", async () => {

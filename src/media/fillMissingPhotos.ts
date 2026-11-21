@@ -27,7 +27,7 @@ export async function fillMissingPhotos(o: FillMissingPhotosOptions): Promise<vo
     const attempt = () => { if (!attempted) { attempted = true; o.onAttempt?.(id); } };
     try {
       const stop = await o.getStop(id);
-      if (!stop || stop.kind === 'lodging' || !stop.title.trim()) {
+      if (!stop || !stop.title.trim()) {
         attempt();
         continue;
       }
