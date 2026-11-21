@@ -182,3 +182,12 @@ describe('idées en trop', () => {
   });
 });
 
+describe('transport des étapes', () => {
+  it('transport reconnu conservé, inconnu ignoré avec avertissement, absent → null', () => {
+    const days = [{ day: 1, title: '', note: '', stops: [stop({ transport: 'ferry' }), stop({ transport: 'fusée' }), stop()] }];
+    const r = validateItinerary(itin({ days }), { tripDays: 1 });
+    if (!('value' in r)) throw new Error('refusé');
+    expect(r.value.days[0].stops.map((s) => s.transport)).toEqual(['ferry', null, null]);
+    expect(r.warnings.join(' ')).toContain('transport');
+  });
+});

@@ -51,7 +51,8 @@ const ITINERARY_FORMAT = `{
           "place": { "name": "Nom exact du lieu", "city": "Ville", "country": "Pays" },
           "startTime": "09:30",
           "durationMin": 90,
-          "note": ""
+          "note": "",
+          "transport": "plane | ferry | train | bus (seulement pour un départ en avion, ferry, train ou bus : le trajet vers l'étape suivante se fait ainsi, durée = durationMin)"
         }
       ]
     }

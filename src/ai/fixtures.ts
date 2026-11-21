@@ -30,7 +30,7 @@ export const IDEAS_FIXTURE: IdeasResponse = {
 };
 
 const stop = (title: string, name: string, startTime: string | null, durationMin: number | null, kind: 'activity' | 'lodging' | 'point' = 'activity') => ({
-  title, kind, place: { name, city: 'Kyoto', country: 'Japon' }, startTime, durationMin, note: '',
+  title, kind, place: { name, city: 'Kyoto', country: 'Japon' }, startTime, durationMin, note: '', transport: null,
 });
 
 export const ITINERARY_FIXTURE: ItineraryResponse = {
