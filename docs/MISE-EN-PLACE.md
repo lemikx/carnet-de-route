@@ -176,3 +176,26 @@ L'offre gratuite de Supabase met le projet en pause après une semaine sans acti
 - Pour la relancer : supabase.com → ton projet → **Restore project**.
 - Pour l'éviter : la tâche GitHub **« Maintien de la base Supabase »** (`.github/workflows/keepalive.yml`) envoie une petite requête en lecture seule tous les 3 jours. Tu peux la lancer à la main : onglet **Actions** → « Maintien de la base Supabase » → **Run workflow**.
 - Attention : GitHub suspend les tâches planifiées d'un dépôt sans aucune activité pendant 60 jours ; il suffit alors de la réactiver dans l'onglet Actions.
+
+---
+
+## E-mails de connexion par Resend (au-delà de la limite de Supabase)
+Le service d'e-mails intégré de Supabase n'envoie que quelques e-mails par heure (message « Trop de demandes d'e-mails… (429) »). Pour lever cette limite, les e-mails passent par **Resend** (gratuit : 100 e-mails par jour, 3 000 par mois).
+
+1. Créer un compte sur **resend.com** avec **la même adresse e-mail que celle qui sert à se connecter à l'appli** (sans nom de domaine, Resend n'envoie qu'à l'adresse du compte).
+2. **API Keys → Create API Key** : copier la clé (`re_…`). Ne la coller nulle part ailleurs que dans Supabase.
+3. Supabase → **Authentication → Emails → SMTP Settings** → **Enable custom SMTP** :
+
+| Champ | Valeur |
+|---|---|
+| Sender email | `onboarding@resend.dev` |
+| Sender name | `Carnet de route` |
+| Host | `smtp.resend.com` |
+| Port | `465` |
+| Username | `resend` |
+| Password | la clé Resend (`re_…`) |
+
+4. Supabase → **Authentication → Rate Limits** : passer la limite d'e-mails par heure à 30.
+5. Tester : se déconnecter de l'appli et demander un lien de connexion.
+
+Pour donner un compte à une autre personne, il faut un nom de domaine vérifié chez Resend (et une adresse d'expéditeur de ce domaine).
