@@ -3,6 +3,7 @@ import type { TripRepository } from '../data/TripRepository';
 import type { RoutingService } from '../routing/RoutingService';
 import type { BudgetService } from '../services/budgetService';
 import type { TripService } from '../services/tripService';
+import { normalizeDestination } from './destination';
 import { resolvePlaces } from './placeResolver';
 import { buildIdeasPrompt, buildItineraryPrompt, openInClaudeUrl } from './promptBuilder';
 import { parseIdeas, parseItinerary, type ParseResult } from './responseParser';
@@ -42,9 +43,10 @@ export function createAiService(deps: {
 
   return {
     async startDraft(brief) {
-      const mode = brief.destination?.trim() ? 'known' : 'surprise';
+      const destination = normalizeDestination(brief.destination);
+      const mode = destination ? 'known' : 'surprise';
       return repo.saveDraft({
-        stage: 'brief', mode, brief, ideas: null, chosenIdeaId: null, itinerary: null, tripId: null, protocolVersion: 1, updatedAt: '',
+        stage: 'brief', mode, brief: { ...brief, destination }, ideas: null, chosenIdeaId: null, itinerary: null, tripId: null, protocolVersion: 1, updatedAt: '',
       });
     },
 

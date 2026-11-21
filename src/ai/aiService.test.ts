@@ -136,4 +136,12 @@ describe('aiService', () => {
     expect((await ai.buildRequest(d.id)).kind).toBe('itinerary');
     expect((await repo.getDraft(d.id)).stage).toBe('itinerary_requested');
   });
+
+  it('« surprend moi » écrit dans la destination → mode surprise', async () => {
+    const { ai } = make();
+    const d = await ai.startDraft(brief({ destination: 'surprend moi' }));
+    expect([d.mode, d.brief.destination]).toEqual(['surprise', null]);
+    expect((await ai.buildRequest(d.id)).kind).toBe('ideas');
+  });
 });
+
