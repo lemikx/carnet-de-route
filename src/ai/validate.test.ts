@@ -167,3 +167,18 @@ describe('bestPeriod', () => {
     expect('value' in b && b.value.trip.bestPeriod).toBeNull();
   });
 });
+
+describe('idées en trop', () => {
+  it('4 idées : les 3 premières gardées avec un avertissement', () => {
+    const r = validateIdeas(ideas(4));
+    expect('value' in r && r.value.ideas.map((i) => i.id)).toEqual(['i1', 'i2', 'i3']);
+    expect('warnings' in r && r.warnings.join(' ')).toContain('4 idées reçues');
+  });
+  it('2 idées : toujours refusé', () => {
+    expect('errors' in validateIdeas(ideas(2))).toBe(true);
+  });
+  it('50 idées : refus net (réponse anormale)', () => {
+    expect('errors' in validateIdeas(ideas(50))).toBe(true);
+  });
+});
+
