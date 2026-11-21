@@ -1,25 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useApp } from '../../app/AppContext';
-import { formatDate } from '../../domain/format';
 import { sortReservations } from '../../domain/reservations';
 import type { Reservation, TripBundle } from '../../domain/types';
 import { useOnline } from '../../offline/useOnline';
 import { ConfirmDialog } from '../common/ConfirmDialog';
-import { CopyButton } from '../common/CopyButton';
-import { safeHref } from '../common/safeHref';
 import { SaveError } from '../common/SaveError';
 import { useSave } from '../common/useSave';
-import { RESERVATION_LABELS } from './labels';
+import { ReservationCard } from './ReservationCard';
 import { ReservationForm } from './ReservationForm';
 import type { TripTabProps } from './types';
-
-const ICON: Record<Reservation['type'], string> = { flight: '✈️', lodging: '🏨', car_rental: '🚗', train: '🚆', activity: '🎟️', other: '📌' };
-
-function when(r: Reservation) {
-  const start = `${formatDate(r.startAt.date)} ${r.startAt.time}`;
-  if (!r.endAt) return start;
-  return `${start} → ${r.endAt.date === r.startAt.date ? '' : formatDate(r.endAt.date) + ' '}${r.endAt.time}`;
-}
 
 export function ReservationsTab({ bundle, setBundle }: TripTabProps) {
   const { service, routing } = useApp();
@@ -63,29 +52,7 @@ export function ReservationsTab({ bundle, setBundle }: TripTabProps) {
                 onSave={(x) => void saveAndClose(() => service.saveReservation(x))} onCancel={() => setEditing(null)} />
             </li>
           ) : (
-            <li key={r.id} className="card" data-testid="reservation">
-              <div className="day-head">
-                <strong>{ICON[r.type]} {r.title}</strong>
-                <span className="badge">{RESERVATION_LABELS[r.type]}</span>
-              </div>
-              <p className="muted">{when(r)}</p>
-              {(r.fromPlace || r.toPlace) && (
-                <p className="muted">{[r.fromPlace?.title, r.toPlace?.title].filter(Boolean).join(' → ')}</p>
-              )}
-              {!inTrip(r) && <p className="alert">Hors des dates du voyage : pas ajoutée à l’itinéraire.</p>}
-              {r.confirmationNumber && (
-                <p>N° <strong>{r.confirmationNumber}</strong> <CopyButton value={r.confirmationNumber} label="Copier le n°" /></p>
-              )}
-              <p className="muted">
-                {r.price !== null && <span>{r.price.toLocaleString('fr-FR')} {r.currency} · </span>}
-                {r.phone && <a href={`tel:${r.phone}`}>{r.phone}</a>} {safeHref(r.url) && <a href={safeHref(r.url)!} target="_blank" rel="noreferrer">Voir la réservation</a>}
-              </p>
-              {r.note && <p>{r.note}</p>}
-              <div className="trip-actions" style={{ justifyContent: 'flex-end' }}>
-                <button className="btn btn-small" onClick={() => setEditing(r)} disabled={disabled}>Modifier</button>
-                <button className="btn btn-small btn-danger-text" onClick={() => setDeleting(r)} disabled={disabled}>Supprimer</button>
-              </div>
-            </li>
+            <ReservationCard key={r.id} r={r} inTrip={inTrip(r)} disabled={disabled} onEdit={() => setEditing(r)} onDelete={() => setDeleting(r)} />
           ),
         )}
       </ul>

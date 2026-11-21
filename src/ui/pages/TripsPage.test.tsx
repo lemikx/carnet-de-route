@@ -82,3 +82,22 @@ describe('TripsPage — modification d’un voyage', () => {
     expect(screen.getByLabelText('Date de retour')).toHaveValue('2026-12-10');
   });
 });
+
+describe('TripsPage — recherche', () => {
+  it('filtre par nom ou pays et propose la création IA sans résultat', async () => {
+    const repo = createMemoryRepository();
+    await repo.createTrip({ name: 'Japon', countries: ['Japon'], startDate: '2026-12-01', endDate: '2026-12-10', localCurrency: 'JPY', homeTimezone: 'Europe/Paris', updatedAt: '' });
+    await repo.createTrip({ name: 'Road trip', countries: ['Islande'], startDate: '2027-06-01', endDate: '2027-06-10', localCurrency: 'ISK', homeTimezone: 'Europe/Paris', updatedAt: '' });
+    renderPage(repo);
+    const u = userEvent.setup();
+    const search = await screen.findByLabelText('Où voulez-vous aller ?');
+    await u.type(search, 'ISLANDE');
+    expect(screen.getByText('Road trip')).toBeInTheDocument();
+    expect(screen.queryByText('Japon')).toBeNull();
+    await u.clear(search);
+    await u.type(search, 'Pérou');
+    expect(screen.getByText('Aucun voyage ne correspond.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Créer ce voyage avec l’IA' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Mes voyages' })).toBeInTheDocument();
+  });
+});

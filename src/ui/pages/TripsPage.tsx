@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../app/AppContext';
 import { formatDate, formatDayLabel } from '../../domain/format';
 import { orderedStops } from '../../domain/legs';
+import { filterTrips } from '../../domain/tripSearch';
 import type { Day, Trip } from '../../domain/types';
 import { NeedsConfirmationError } from '../../services/tripService';
 import { useOnline } from '../../offline/useOnline';
@@ -99,10 +100,25 @@ export function TripsPage() {
     }, [service, trips]),
   );
 
-  const list = trips.data ?? [];
-  const covers = useCovers(list);
+  const all = trips.data ?? [];
+  const [query, setQuery] = useState('');
+  const list = filterTrips(all, query);
+  const covers = useCovers(all);
   return (
     <main className="page">
+      <section className="hero">
+        <p className="hero-title">
+          Vos voyages,<br /><span>simplement planifiés.</span>
+        </p>
+        <p className="hero-sub muted">Itinéraires, budget et réservations au même endroit.</p>
+        <div className={query ? 'hero-search filled' : 'hero-search'}>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" focusable="false">
+            <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+          </svg>
+          <label htmlFor="trip-search" className="hero-label">Où voulez-vous aller ?</label>
+          <input id="trip-search" type="search" className="hero-input" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
+        </div>
+      </section>
       <div className="page-head">
         <h1>Mes voyages</h1>
         {!creating && (
@@ -129,7 +145,13 @@ export function TripsPage() {
 
       {trips.loading && !trips.data && <p className="muted">Chargement…</p>}
       {Boolean(trips.error) && <p role="alert" className="save-error">Impossible de charger tes voyages.</p>}
-      {!trips.loading && list.length === 0 && !creating && <p className="empty">Aucun voyage pour l’instant</p>}
+      {!trips.loading && all.length === 0 && !creating && <p className="empty">Aucun voyage pour l’instant</p>}
+      {all.length > 0 && list.length === 0 && (
+        <div className="empty" role="status">
+          <p>Aucun voyage ne correspond.</p>
+          <button className="btn btn-primary" onClick={() => navigate('/ia/nouveau')} disabled={!online}>Créer ce voyage avec l’IA</button>
+        </div>
+      )}
 
       <ul className="trip-list">
         {list.map((t) =>
