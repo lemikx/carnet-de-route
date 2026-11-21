@@ -43,6 +43,9 @@ export interface ItineraryPlace {
   country: string;
 }
 
+/** Étape de départ en transport : le trajet vers l'étape suivante se fait dans ce mode. */
+export type StopTransport = 'plane' | 'ferry' | 'train' | 'bus';
+
 export interface ItineraryStop {
   title: string;
   kind: StopKind;
@@ -50,6 +53,7 @@ export interface ItineraryStop {
   startTime: string | null;
   durationMin: number | null;
   note: string;
+  transport: StopTransport | null;
 }
 
 export interface ItineraryDay {

@@ -4,8 +4,20 @@ import type { TripRepository } from '../data/TripRepository';
 import type { TripService } from '../services/tripService';
 import type { Stop } from '../domain/types';
 import type { ResolvedPlace } from './placeResolver';
-import type { Brief, ItineraryResponse, ItineraryStop } from './types';
+import type { Brief, ItineraryResponse, ItineraryStop, StopTransport } from './types';
+import type { TravelMode } from '../domain/types';
 import { assessVisa } from './visa';
+
+/** Mode de transport d'une étape : champ « transport », sinon déduit du titre (« Vol… », « Ferry… »). */
+export function transportOf(stop: Pick<ItineraryStop, 'title' | 'transport'>): StopTransport | null {
+  if (stop.transport) return stop.transport;
+  const t = stop.title.trim().toLowerCase();
+  if (/^(vol|avion)\b/.test(t)) return 'plane';
+  if (/^(ferry|bateau|traversée)\b/.test(t)) return 'ferry';
+  if (/^train\b/.test(t)) return 'train';
+  if (/^bus\b/.test(t)) return 'bus';
+  return null;
+}
 
 export class CreationError extends Error {
   constructor(message: string, public cause?: unknown) {
@@ -54,6 +66,7 @@ export async function createTripFromItinerary(
     // Étapes : l'hébergement termine la journée ; les jours en trop sont ignorés.
     let cursor = 0;
     let toVerify = 0;
+    const transports = new Map<string, { mode: TravelMode; durationMin: number | null }>();
     for (const [i, day] of itinerary.days.entries()) {
       const indexed: { stop: ItineraryStop; res: ResolvedPlace }[] = day.stops.map((stop, k) => ({ stop, res: resolved[cursor + k] ?? NONE }));
       cursor += day.stops.length;
@@ -80,10 +93,17 @@ export async function createTripFromItinerary(
           url: '',
           reservationId: null,
         };
-        await repo.saveStop(s);
+        const created = await repo.saveStop(s);
+        const mode = transportOf(stop);
+        if (mode) transports.set(created.id, { mode, durationMin: stop.durationMin });
       }
     }
-    await tripService.syncLegs(tripId);
+    const synced = await tripService.syncLegs(tripId);
+    // Trajets en avion, ferry, train ou bus : mode imposé, durée de l'étape de départ, jamais de calcul routier.
+    for (const leg of synced.legs) {
+      const tr = transports.get(leg.fromStopId);
+      if (tr) await repo.saveLeg({ ...leg, mode: tr.mode, durationMin: tr.durationMin, distanceKm: null, geometry: null, source: 'manual', error: null });
+    }
 
     // Checklist : éléments de l'IA, puis échéance du visa.
     const existing = (await repo.getBundle(tripId)).checklist;

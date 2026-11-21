@@ -137,3 +137,22 @@ describe('createTripFromItinerary', () => {
     expect(r.toVerify).toBe(1);
   });
 });
+
+describe('trajets en ferry ou en avion', () => {
+  const st = (title: string, o: Record<string, unknown> = {}) => ({
+    title, kind: 'point' as const, place: { name: title, city: 'Kyoto', country: 'Japon' }, startTime: null, durationMin: null, note: '', transport: null, ...o,
+  });
+  it('« Ferry … » puis étape suivante : trajet en ferry avec la durée de l’étape, sans erreur', async () => {
+    const { repo, deps } = setup();
+    const it1 = itin({ days: [{ day: 1, title: '', note: '', stops: [st('Ferry Funchal → Porto Santo', { durationMin: 150 }), st('Plage')] },
+      { day: 2, title: '', note: '', stops: [st('Vol retour', { transport: null }), st('Arrivée')] },
+      { day: 3, title: '', note: '', stops: [st('Embarquement', { transport: 'plane', durationMin: 600 }), st('Toulouse')] }] });
+    const r = await createTripFromItinerary(deps, { brief, itinerary: it1, resolved: Array(6).fill(null).map((_, i) => ok(35 + i)) });
+    const b = await repo.getBundle(r.tripId);
+    const legFrom = (title: string) => b.legs.find((l) => l.fromStopId === b.stops.find((s) => s.title === title)!.id)!;
+    expect(legFrom('Ferry Funchal → Porto Santo')).toMatchObject({ mode: 'ferry', durationMin: 150, source: 'manual', error: null });
+    expect(legFrom('Vol retour')).toMatchObject({ mode: 'plane', durationMin: null, source: 'manual', error: null });
+    expect(legFrom('Embarquement')).toMatchObject({ mode: 'plane', durationMin: 600, source: 'manual' });
+    expect(legFrom('Plage').mode).toBe('car');
+  });
+});

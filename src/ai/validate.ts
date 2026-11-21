@@ -3,7 +3,7 @@ import { BUDGET_CATEGORIES } from '../domain/budget/types';
 import type { ChecklistCategory, StopKind } from '../domain/types';
 import { LIMITS } from './limits';
 import type {
-  BestPeriod, Idea, IdeasResponse, ItineraryBudgetLine, ItineraryChecklistItem, ItineraryDay, ItineraryResponse, ItineraryStop, VisaInfo,
+  BestPeriod, Idea, StopTransport, IdeasResponse, ItineraryBudgetLine, ItineraryChecklistItem, ItineraryDay, ItineraryResponse, ItineraryStop, VisaInfo,
 } from './types';
 
 type Obj = Record<string, unknown>;
@@ -39,6 +39,7 @@ function num(x: unknown, opts: { min?: number; max?: number; int?: boolean } = {
 const CHECKLIST_CATEGORIES: ChecklistCategory[] = ['documents', 'health', 'luggage', 'before_departure'];
 const STOP_KINDS: StopKind[] = ['activity', 'lodging', 'point'];
 const LINE_MODES: LineMode[] = ['fixed', 'per_person', 'per_day', 'per_person_per_day'];
+const TRANSPORTS: StopTransport[] = ['plane', 'ferry', 'train', 'bus'];
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const EMPTY_VISA: VisaInfo = { required: 'unknown', type: '', processingDaysMin: null, processingDaysMax: null, officialUrl: null, notes: '' };
@@ -175,7 +176,11 @@ export function validateItinerary(raw: unknown, opts: { tripDays: number }): Out
         startTime,
         durationMin,
         note: cleanText(s.note),
+        transport: TRANSPORTS.includes(s.transport as StopTransport) ? (s.transport as StopTransport) : null,
       });
+      if (s.transport !== undefined && s.transport !== null && !TRANSPORTS.includes(s.transport as StopTransport)) {
+        warnings.push(`${where} : « transport » inconnu, ignoré.`);
+      }
     });
     days.push({ day: i + 1, title: cleanText(d.title, 200), note: cleanText(d.note), stops });
   });
