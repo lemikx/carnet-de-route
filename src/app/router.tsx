@@ -21,6 +21,7 @@ function Shell() {
       </header>
       <OfflineBanner />
       <Outlet />
+      <footer className="app-version muted">Version {__APP_VERSION__}</footer>
     </>
   );
 }

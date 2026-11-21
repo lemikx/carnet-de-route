@@ -143,5 +143,16 @@ describe('aiService', () => {
     expect([d.mode, d.brief.destination]).toEqual(['surprise', null]);
     expect((await ai.buildRequest(d.id)).kind).toBe('ideas');
   });
+
+  it('ancien brouillon « known » avec destination « surprends moi » → corrigé en surprise', async () => {
+    const { repo, ai } = make();
+    const old = await repo.saveDraft({
+      stage: 'brief', mode: 'known', brief: brief({ destination: 'surprends moi' }), ideas: null, chosenIdeaId: null,
+      itinerary: null, tripId: null, protocolVersion: 1, updatedAt: '',
+    });
+    expect((await ai.buildRequest(old.id)).kind).toBe('ideas');
+    const d = await repo.getDraft(old.id);
+    expect([d.mode, d.brief.destination, d.stage]).toEqual(['surprise', null, 'ideas_requested']);
+  });
 });
 
