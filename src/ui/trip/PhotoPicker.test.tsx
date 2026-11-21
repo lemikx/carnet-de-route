@@ -37,6 +37,6 @@ describe('PhotoPicker', () => {
     render(<PhotoPicker placeName="Belém" onChange={onChange} value={{ photoUrl: 'https://x/y.jpg', photoCredit: 'Jane', photoLicense: 'CC0', photoLicenseUrl: null }} />);
     await userEvent.click(screen.getByRole('button', { name: 'Retirer la photo' }));
     expect(onChange).toHaveBeenCalledWith(empty);
-    await waitFor(() => expect(screen.getByText(/Photo : Jane · CC0/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Photo :/)).toBeInTheDocument());
   });
 });

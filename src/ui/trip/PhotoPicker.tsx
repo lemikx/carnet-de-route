@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { searchFreePhotos, type CommonsPhoto } from '../../media/commonsPhotos';
+import { PhotoCredit } from './PhotoCredit';
 
 export interface PhotoChoice {
   photoUrl: string | null;
@@ -45,9 +46,7 @@ export function PhotoPicker({
       {value.photoUrl && (
         <figure className="stop-photo-preview">
           <img src={value.photoUrl} alt="" loading="lazy" />
-          <figcaption className="muted">
-            Photo : {value.photoCredit} · {value.photoLicense}
-          </figcaption>
+          <PhotoCredit credit={value.photoCredit} license={value.photoLicense} licenseUrl={value.photoLicenseUrl} />
           <button type="button" className="btn btn-small" onClick={() => onChange({ photoUrl: null, photoCredit: null, photoLicense: null, photoLicenseUrl: null })} disabled={disabled}>
             Retirer la photo
           </button>

@@ -19,6 +19,7 @@ import { MapView } from '../map/MapView';
 import { findPhotoForStop } from '../../media/autoPhoto';
 import { KIND_LABELS } from './labels';
 import { LegRow } from './LegRow';
+import { PhotoCredit } from './PhotoCredit';
 import { StopEditor } from './StopEditor';
 import type { TripTabProps } from './types';
 
@@ -47,7 +48,7 @@ function StopCard({
         {stop.photoUrl && (
           <figure className="stop-photo">
             <img src={stop.photoUrl} alt="" loading="lazy" />
-            <figcaption className="muted">Photo : {stop.photoCredit} · {stop.photoLicense}</figcaption>
+            <PhotoCredit credit={stop.photoCredit} license={stop.photoLicense} licenseUrl={stop.photoLicenseUrl} />
           </figure>
         )}
         <div className="stop-meta">
