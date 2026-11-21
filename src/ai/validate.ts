@@ -95,11 +95,14 @@ export function validateIdeas(raw: unknown): Out<IdeasResponse> {
   const errors: string[] = [];
   const warnings: string[] = [];
   if (!isObj(raw) || !Array.isArray(raw.ideas)) return { errors: ['La réponse ne contient pas de liste « ideas ».'] };
-  if (raw.ideas.length !== LIMITS.ideas) {
+  if (raw.ideas.length < LIMITS.ideas || raw.ideas.length > 10) {
     return { errors: [`Il faut exactement ${LIMITS.ideas} idées (${raw.ideas.length} reçue(s)).`] };
   }
+  if (raw.ideas.length > LIMITS.ideas) {
+    warnings.push(`${raw.ideas.length} idées reçues : seules les ${LIMITS.ideas} premières sont gardées.`);
+  }
   const ideas: Idea[] = [];
-  raw.ideas.forEach((it, i) => {
+  raw.ideas.slice(0, LIMITS.ideas).forEach((it, i) => {
     if (!isObj(it)) { errors.push(`Idée ${i + 1} : format invalide.`); return; }
     const destination = cleanText(it.destination, 120);
     const where = `Idée « ${destination || i + 1} »`;
