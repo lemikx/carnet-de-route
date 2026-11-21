@@ -168,3 +168,11 @@ La migration crée seulement la table des **brouillons** (tes réponses au quest
 2. Copie la demande dans Claude (ou **Ouvrir dans Claude**), avec la **recherche web activée**, puis colle sa réponse.
 3. Les visas sont vérifiés par l'appli (vert / orange / rouge / gris) : **toujours à confirmer sur le site officiel**.
 4. Vérifie le résumé puis **Créer le voyage**. Les lieux introuvables sont signalés « à vérifier ».
+
+---
+
+## Base mise en pause par Supabase
+L'offre gratuite de Supabase met le projet en pause après une semaine sans activité (message « Impossible de joindre le serveur »).
+- Pour la relancer : supabase.com → ton projet → **Restore project**.
+- Pour l'éviter : la tâche GitHub **« Maintien de la base Supabase »** (`.github/workflows/keepalive.yml`) envoie une petite requête en lecture seule tous les 3 jours. Tu peux la lancer à la main : onglet **Actions** → « Maintien de la base Supabase » → **Run workflow**.
+- Attention : GitHub suspend les tâches planifiées d'un dépôt sans aucune activité pendant 60 jours ; il suffit alors de la réactiver dans l'onglet Actions.
