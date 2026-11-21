@@ -5,6 +5,7 @@ import { PhotoCredit, splitCredit } from './PhotoCredit';
 describe('PhotoCredit', () => {
   it('sépare l’auteur et la page source', () => {
     expect(splitCredit('Jane (https://commons.example/File:Reykjavik.jpg)')).toEqual({ author: 'Jane', source: 'https://commons.example/File:Reykjavik.jpg' });
+    expect(splitCredit('Gordon Leggett (https://commons.example/File:Reykjavik_(Iceland).jpg)')).toEqual({ author: 'Gordon Leggett', source: 'https://commons.example/File:Reykjavik_(Iceland).jpg' });
     expect(splitCredit('Jane')).toEqual({ author: 'Jane', source: null });
   });
   it('n’affiche pas l’adresse du fichier en clair', () => {
