@@ -17,6 +17,7 @@ import { useSave } from '../common/useSave';
 import { appleMapsUrl } from '../map/appleMaps';
 import { MapView } from '../map/MapView';
 import { findPhotoForStop } from '../../media/autoPhoto';
+import { fillMissingPhotos } from '../../media/fillMissingPhotos';
 import { KIND_LABELS } from './labels';
 import { LegRow } from './LegRow';
 import { PhotoCredit } from './PhotoCredit';
@@ -116,18 +117,46 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
     });
   }
 
-  // Photos automatiques : une seule tentative par étape, une étape à la fois, jamais pendant une modification.
+  // Photos automatiques : toutes les étapes sans photo, une à la fois, en une seule boucle (jamais deux en parallèle),
+  // même quand une recherche ne trouve rien. Une étape n'est essayée qu'une fois.
   const triedPhotos = useRef(new Set<string>());
+  const photoRunning = useRef(false);
+  const mounted = useRef(true);
+  const canRun = useRef(false);
+  canRun.current = online && !editing && !action.saving;
   useEffect(() => {
-    if (!online || editing || action.saving) return;
-    const next = bundle.stops.find((s) => !s.photoUrl && s.kind !== 'lodging' && s.title && !triedPhotos.current.has(s.id));
-    if (!next) return;
-    triedPhotos.current.add(next.id);
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  useEffect(() => {
+    if (!canRun.current || photoRunning.current) return;
+    const wants = (s: Stop) => !s.photoUrl && s.kind !== 'lodging' && !!s.title && !triedPhotos.current.has(s.id);
+    if (!bundle.stops.some(wants)) return;
+    photoRunning.current = true;
+    const tripId = bundle.trip.id;
     void (async () => {
-      const photo = await findPhotoForStop(next.title, next.address);
-      if (photo) setBundle(await service.updateStop({ ...next, ...photo }));
+      try {
+        const isCancelled = () => !mounted.current || !canRun.current;
+        while (!isCancelled()) {
+          const fresh = await repo.getBundle(tripId);
+          const stopIds = fresh.stops.filter(wants).map((s) => s.id);
+          if (stopIds.length === 0) break;
+          await fillMissingPhotos({
+            stopIds,
+            getStop: async (id) => (await repo.getBundle(tripId)).stops.find((s) => s.id === id) ?? null,
+            find: (stop) => findPhotoForStop(stop.title, stop.address),
+            save: async (stop, photo) => { const b = await service.updateStop({ ...stop, ...photo }); if (mounted.current) setBundle(b); },
+            isCancelled,
+            onAttempt: (id) => { triedPhotos.current.add(id); },
+          });
+        }
+      } catch {
+        // Les photos automatiques ne doivent jamais bloquer l'écran.
+      } finally {
+        photoRunning.current = false;
+      }
     })();
-  }, [bundle.stops, online, editing, action.saving, service, setBundle]);
+  }, [bundle.stops, bundle.trip.id, online, editing, action.saving, repo, service, setBundle]);
 
   function onDragEnd(e: DragEndEvent) {
     const activeId = String(e.active.id);
