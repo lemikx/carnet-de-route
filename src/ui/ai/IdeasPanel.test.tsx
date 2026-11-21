@@ -45,3 +45,13 @@ describe('IdeasPanel', () => {
     expect(onRepaste).toHaveBeenCalled();
   });
 });
+
+describe('IdeasPanel — meilleure période', () => {
+  it('affiche la période quand l’idée en a une, pas sinon', () => {
+    render(<IdeasPanel draft={draft()} today="2026-11-12" onChoose={() => {}} />);
+    const kyoto = screen.getByRole('heading', { name: /Kyoto/ }).closest('li')!;
+    expect(within(kyoto).getByText('Meilleure période')).toBeInTheDocument();
+    const lagos = screen.getByRole('heading', { name: /Lagos/ }).closest('li')!;
+    expect(within(lagos).queryByText('Meilleure période')).toBeNull();
+  });
+});

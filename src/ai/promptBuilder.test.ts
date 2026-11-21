@@ -45,3 +45,12 @@ describe('promptBuilder', () => {
     expect(buildContinuePrompt()).toContain('continue exactement où tu t’es arrêté');
   });
 });
+
+describe('bestPeriod dans la demande', () => {
+  it('les deux demandes réclament la meilleure période', () => {
+    const b = brief();
+    for (const p of [buildIdeasPrompt(b, '2026-11-12'), buildItineraryPrompt(b, IDEAS_FIXTURE.ideas[0], '2026-11-12')]) {
+      for (const s of ['bestPeriod', 'goodMonths', 'avoidMonths']) expect(p).toContain(s);
+    }
+  });
+});

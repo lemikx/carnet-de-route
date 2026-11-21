@@ -13,15 +13,18 @@ export const IDEAS_FIXTURE: IdeasResponse = {
       id: 'kyoto', destination: 'Kyoto', country: 'JP', summary: 'Temples, jardins et cuisine fine.', durationDays: 3,
       highlights: ['Fushimi Inari', 'Arashiyama'], budgetPerPersonEur: 1800, whyItMatches: 'Culture et gastronomie.',
       visa: { required: false, type: '', processingDaysMin: null, processingDaysMax: null, officialUrl: null, notes: 'Pas de visa pour 90 jours.' },
+      bestPeriod: { text: 'Mars à mai et octobre à novembre : doux et sec. Évitez juillet-août, très chaud et humide.', goodMonths: [3, 4, 5, 10, 11], avoidMonths: [7, 8] },
     },
     {
       id: 'hanoi', destination: 'Hanoï', country: 'VN', summary: 'Vie locale et street food.', durationDays: 3,
       highlights: ['Vieux quartier'], budgetPerPersonEur: 1200, whyItMatches: 'Vie locale.', visa: visaYes,
+      bestPeriod: { text: 'Octobre à avril : saison sèche et fraîche.', goodMonths: [10, 11, 12, 1, 2, 3, 4], avoidMonths: [6, 7, 8] },
     },
     {
       id: 'lagos', destination: 'Lagos', country: 'NG', summary: 'Énergie urbaine.', durationDays: 3,
       highlights: ['Marchés'], budgetPerPersonEur: 1400, whyItMatches: 'Hors des sentiers battus.',
       visa: { ...visaYes, processingDaysMin: 30, processingDaysMax: 3000 },
+      bestPeriod: null,
     },
   ],
 };
@@ -33,7 +36,7 @@ const stop = (title: string, name: string, startTime: string | null, durationMin
 export const ITINERARY_FIXTURE: ItineraryResponse = {
   v: 1,
   kind: 'itinerary',
-  trip: { name: 'Kyoto express', countries: ['Japon'], currency: 'JPY', visa: { ...visaYes } },
+  trip: { name: 'Kyoto express', countries: ['Japon'], currency: 'JPY', visa: { ...visaYes }, bestPeriod: { text: 'Mars à mai et octobre à novembre : doux et sec.', goodMonths: [3, 4, 5, 10, 11], avoidMonths: [7, 8] } },
   days: [
     { day: 1, title: 'Arrivée', note: '', stops: [stop('Fushimi Inari', 'Fushimi Inari Taisha', '10:00', 120), stop('Hôtel Gion', 'Hotel Gion', null, null, 'lodging')] },
     { day: 2, title: 'Arashiyama', note: '', stops: [stop('Bambouseraie', 'Arashiyama Bamboo Grove', '09:00', 90), stop('Temple Tenryu-ji', 'Tenryu-ji', '11:00', 60)] },

@@ -127,3 +127,43 @@ describe('correctifs de la revue', () => {
     expect('errors' in validateItinerary(itin({ days: d }), { tripDays: 1 })).toBe(true);
   });
 });
+
+describe('bestPeriod', () => {
+  const period = { text: 'Novembre à février', goodMonths: [11, 12, 1, 2], avoidMonths: [3, 4] };
+  it('conservée à l’identique sur une idée', () => {
+    const raw = ideas() as any;
+    raw.ideas[0].bestPeriod = period;
+    const r = validateIdeas(raw);
+    expect('value' in r && r.value.ideas[0].bestPeriod).toEqual({ text: 'Novembre à février', goodMonths: [1, 2, 11, 12], avoidMonths: [3, 4] });
+  });
+  it('absente : null et aucun avertissement', () => {
+    const r = validateIdeas(ideas());
+    expect('value' in r && r.value.ideas[0].bestPeriod).toBeNull();
+    expect('warnings' in r && r.warnings).toEqual([]);
+  });
+  it('mois invalides ignorés avec avertissement', () => {
+    const raw = ideas() as any;
+    raw.ideas[0].bestPeriod = { text: 'x', goodMonths: [0, 13, 2.5, '5', 11, 11], avoidMonths: [] };
+    const r = validateIdeas(raw);
+    expect('value' in r && r.value.ideas[0].bestPeriod?.goodMonths).toEqual([11]);
+    expect('warnings' in r && r.warnings.join(' ')).toContain('bestPeriod');
+  });
+  it('listes énormes, texte long, mauvais type, vide', () => {
+    const raw = ideas() as any;
+    raw.ideas[0].bestPeriod = { text: 'y'.repeat(600), goodMonths: Array.from({ length: 100 }, (_, i) => (i % 12) + 1), avoidMonths: [] };
+    raw.ideas[1].bestPeriod = 'texte';
+    raw.ideas[2].bestPeriod = { text: '', goodMonths: [], avoidMonths: [] };
+    const r = validateIdeas(raw);
+    if (!('value' in r)) throw new Error('refusée');
+    expect(r.value.ideas[0].bestPeriod?.text.length).toBe(500);
+    expect(r.value.ideas[0].bestPeriod?.goodMonths).toHaveLength(12);
+    expect(r.value.ideas[1].bestPeriod).toBeNull();
+    expect(r.value.ideas[2].bestPeriod).toBeNull();
+  });
+  it('itinéraire : trip.bestPeriod conservé ou null', () => {
+    const a = validateItinerary(itin({ trip: { ...(itin() as any).trip, bestPeriod: period } }), { tripDays: 2 });
+    expect('value' in a && a.value.trip.bestPeriod?.goodMonths).toEqual([1, 2, 11, 12]);
+    const b = validateItinerary(itin(), { tripDays: 2 });
+    expect('value' in b && b.value.trip.bestPeriod).toBeNull();
+  });
+});

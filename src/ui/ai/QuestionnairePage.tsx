@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../app/AppContext';
 import { LODGINGS, PACES, TRAVELER_TYPES, TRIP_TYPES, WISHES, type Option } from '../../ai/options';
 import type { Brief, Pace } from '../../ai/types';
+import { syncEndDate } from '../../domain/days';
 import { useOnline } from '../../offline/useOnline';
 import { SaveError } from '../common/SaveError';
 import { useSave } from '../common/useSave';
@@ -86,7 +87,7 @@ export function QuestionnairePage({ today }: { today?: string }) {
         )}
         {id === 'dates' && (
           <div className="row">
-            <label>Date de départ<input type="date" value={brief.startDate} onChange={(e) => set({ startDate: e.target.value })} /></label>
+            <label>Date de départ<input type="date" value={brief.startDate} onChange={(e) => set({ startDate: e.target.value, endDate: syncEndDate(e.target.value, brief.endDate) })} /></label>
             <label>Date de retour<input type="date" value={brief.endDate} onChange={(e) => set({ endDate: e.target.value })} /></label>
           </div>
         )}

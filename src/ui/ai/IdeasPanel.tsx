@@ -1,5 +1,6 @@
 import { assessVisa, type VisaLevel } from '../../ai/visa';
 import type { AiDraft } from '../../ai/types';
+import { PeriodBadge } from './PeriodBadge';
 import { VisaBadge } from './VisaBadge';
 
 const ORDER: Record<VisaLevel, number> = { green: 0, orange: 1, grey: 2, red: 3 };
@@ -20,6 +21,7 @@ export function IdeasPanel({ draft, today, onChoose, onRepaste, disabled }: { dr
             {idea.highlights.length > 0 && <ul>{idea.highlights.map((h, k) => <li key={k}>{h}</li>)}</ul>}
             {idea.whyItMatches && <p className="muted">{idea.whyItMatches}</p>}
             <VisaBadge visa={idea.visa} departureDate={draft.brief.startDate} today={today} />
+            <PeriodBadge period={idea.bestPeriod} startDate={draft.brief.startDate} endDate={draft.brief.endDate} />
             <button type="button" className="btn btn-primary" disabled={disabled} onClick={() => onChoose(idea.id)}>Choisir cette idée</button>
           </li>
         ))}

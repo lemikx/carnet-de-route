@@ -12,6 +12,7 @@ async function questionnaire(page: Page, destination: string | null) {
     await next(page);
   } else await skip(page);
   await page.getByLabel('Date de départ').fill('2030-03-01');
+  await expect(page.getByLabel('Date de retour')).toHaveValue('2030-03-01');
   await page.getByLabel('Date de retour').fill('2030-03-03');
   await next(page);
   await skip(page); // ville de départ
@@ -36,11 +37,14 @@ test('« Surprends-moi » : questionnaire, idées, itinéraire, voyage créé', 
   await expect(cards).toHaveCount(3);
   await expect(cards.last()).toContainText('Lagos');
   await expect(cards.last()).toHaveClass(/muted/);
+  await expect(cards.filter({ hasText: 'Kyoto' }).getByText('Meilleure période')).toBeVisible();
+  await expect(cards.filter({ hasText: 'Kyoto' }).getByText('Tes dates tombent en bonne période.')).toBeVisible();
 
   await cards.filter({ hasText: 'Kyoto' }).getByRole('button', { name: 'Choisir cette idée' }).click();
   await expect(page.getByLabel('Demande à copier')).toHaveValue(/Kyoto/);
   await pasteAndAnalyse(page, asReply(ITINERARY_FIXTURE));
   await expect(page.getByText('3 jours, 5 étapes')).toBeVisible();
+  await expect(page.getByText('Meilleure période')).toBeVisible();
   await expect(page.getByText(/Faire le visa avant le 12\/02\/2030/)).toBeVisible();
 
   await page.getByRole('button', { name: 'Créer le voyage' }).click();
@@ -69,6 +73,7 @@ test('« Je sais où aller » : pas d’étape idées', async ({ page }) => {
   await questionnaire(page, 'Kyoto');
   await expect(page.getByRole('heading', { name: /itinéraire/i })).toBeVisible();
   await pasteAndAnalyse(page, asReply(ITINERARY_FIXTURE, 'raw'));
+  await expect(page.getByText('Meilleure période')).toBeVisible();
   await page.getByRole('button', { name: 'Créer le voyage' }).click();
   await expect(page.getByRole('link', { name: 'Ouvrir le voyage' })).toBeVisible();
 });

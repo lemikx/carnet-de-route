@@ -55,3 +55,15 @@ describe('ControlPanel', () => {
     expect(await screen.findByText('voyage incomplet peut-être resté')).toBeInTheDocument();
   });
 });
+
+describe('ControlPanel — meilleure période', () => {
+  it('affiche le bloc avant le bouton Créer, et rien sans période', () => {
+    const d = draft();
+    const { unmount } = render(<MemoryRouter><ControlPanel draft={d} today="2026-11-12" onCreate={async () => ({ tripId: 't', toVerify: 0, skippedBudgetLines: 0 })} /></MemoryRouter>);
+    expect(screen.getByText('Meilleure période')).toBeInTheDocument();
+    unmount();
+    d.itinerary!.trip.bestPeriod = null;
+    render(<MemoryRouter><ControlPanel draft={d} today="2026-11-12" onCreate={async () => ({ tripId: 't', toVerify: 0, skippedBudgetLines: 0 })} /></MemoryRouter>);
+    expect(screen.queryByText('Meilleure période')).toBeNull();
+  });
+});
