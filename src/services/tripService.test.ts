@@ -238,3 +238,29 @@ describe('TripService', () => {
     expect(copy.checklist).toHaveLength(15);
   });
 });
+
+describe('trajet introuvable entre lieux proches', () => {
+  async function legBetween(a: [number, number], b: [number, number]) {
+    const repo = createMemoryRepository();
+    const noRoute = { ...createFakeRouting(), route: async () => { const { RoutingError } = await import('../routing/RoutingService'); throw new RoutingError('NO_ROUTE', 'x'); } };
+    const service = createTripService(repo, noRoute);
+    const t = await service.createTrip(tripInput());
+    await service.addStop(t.days[0].id, stop('A', ...a));
+    const b2 = await service.addStop(t.days[0].id, stop('B', ...b));
+    return b2.legs[0];
+  }
+  it('à moins de 1,2 km : à pied, durée estimée, sans erreur', async () => {
+    const leg = await legBetween([32.6750, -16.9010], [32.6770, -16.9000]);
+    expect(leg).toMatchObject({ mode: 'walk', error: null });
+    expect(leg.durationMin).toBeGreaterThan(0);
+  });
+  it('entre 1,2 et 20 km : en voiture, durée estimée, sans erreur', async () => {
+    const leg = await legBetween([32.65, -16.91], [32.70, -16.80]);
+    expect(leg).toMatchObject({ mode: 'car', error: null });
+    expect(leg.durationMin).toBeGreaterThan(5);
+  });
+  it('au-delà de 20 km : erreur conservée (mer probable)', async () => {
+    const leg = await legBetween([32.65, -16.91], [33.06, -16.34]);
+    expect(leg.error).toContain('Aucun trajet routier');
+  });
+});

@@ -191,3 +191,21 @@ describe('transport des étapes', () => {
     expect(r.warnings.join(' ')).toContain('transport');
   });
 });
+
+describe('coordonnées et fuseau', () => {
+  it('lat/lon valides conservées, invalides ignorées avec avertissement', () => {
+    const p = (o: object) => ({ name: 'X', city: 'Y', country: 'Z', ...o });
+    const days = [{ day: 1, title: '', note: '', stops: [stop({ place: p({ lat: 32.65, lon: -16.91 }) }), stop({ place: p({ lat: 200, lon: 0 }) }), stop()] }];
+    const r = validateItinerary(itin({ days }), { tripDays: 1 });
+    if (!('value' in r)) throw new Error('refusé');
+    expect(r.value.days[0].stops.map((s) => [s.place.lat, s.place.lon])).toEqual([[32.65, -16.91], [null, null], [null, null]]);
+    expect(r.warnings.join(' ')).toContain('coordonnées');
+  });
+  it('fuseau IANA valide conservé, invalide → null', () => {
+    const t = (tz: unknown) => validateItinerary(itin({ trip: { ...(itin() as any).trip, timezone: tz } }), { tripDays: 2 });
+    const a = t('Atlantic/Madeira');
+    expect('value' in a && a.value.trip.timezone).toBe('Atlantic/Madeira');
+    const b = t('Mars/Olympus');
+    expect('value' in b && b.value.trip.timezone).toBeNull();
+  });
+});

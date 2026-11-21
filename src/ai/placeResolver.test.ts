@@ -121,3 +121,18 @@ describe('resolvePlaces', () => {
     expect(r[3]).toMatchObject({ status: 'far', lat: null, lon: null });
   });
 });
+
+describe('coordonnées fournies par l’IA', () => {
+  it('utilisées sans recherche d’adresse, avec le fuseau du voyage', async () => {
+    const s = service(async () => [geo(35)]);
+    const places = [
+      { name: 'A', city: 'Funchal', country: 'Portugal', lat: 32.65, lon: -16.91 },
+      { name: 'B', city: 'Funchal', country: 'Portugal', lat: 32.66, lon: -16.92 },
+      { name: 'C sans coordonnées', city: 'Funchal', country: 'Portugal' },
+    ];
+    const r = await resolvePlaces(places, { routing: s.routing, timezone: 'Atlantic/Madeira' });
+    expect(r[0]).toMatchObject({ status: 'ok', lat: 32.65, lon: -16.91, timezone: 'Atlantic/Madeira' });
+    expect(s.calls.map((c) => c.q)).toEqual(['C sans coordonnées, Funchal, Portugal']);
+    expect(s.calls[0].focus).toEqual({ lat: 32.655, lon: -16.915 });
+  });
+});

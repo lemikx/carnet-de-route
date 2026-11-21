@@ -41,6 +41,9 @@ export interface ItineraryPlace {
   name: string;
   city: string;
   country: string;
+  /** Coordonnées GPS fournies par l'IA (facultatives) : utilisées sans recherche d'adresse. */
+  lat?: number | null;
+  lon?: number | null;
 }
 
 /** Étape de départ en transport : le trajet vers l'étape suivante se fait dans ce mode. */
@@ -80,7 +83,7 @@ export interface ItineraryBudgetLine {
 export interface ItineraryResponse {
   v: 1;
   kind: 'itinerary';
-  trip: { name: string; countries: string[]; currency: string; visa: VisaInfo; bestPeriod: BestPeriod | null };
+  trip: { name: string; countries: string[]; currency: string; visa: VisaInfo; bestPeriod: BestPeriod | null; timezone: string | null };
   days: ItineraryDay[];
   checklist: ItineraryChecklistItem[];
   budget: ItineraryBudgetLine[];

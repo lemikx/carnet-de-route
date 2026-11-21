@@ -34,12 +34,17 @@ const NOT_FOUND: ResolvedPlace = { status: 'not_found', lat: null, lon: null, ti
 
 export async function resolvePlaces(
   places: ItineraryPlace[],
-  deps: { routing: RoutingService; onProgress?(done: number, total: number): void; concurrency?: number },
+  deps: { routing: RoutingService; onProgress?(done: number, total: number): void; concurrency?: number; timezone?: string | null },
 ): Promise<ResolvedPlace[]> {
+  // Coordonnées fournies par l'IA : utilisées telles quelles, sans recherche d'adresse.
+  const given: (ResolvedPlace | null)[] = places.map((p) =>
+    typeof p.lat === 'number' && typeof p.lon === 'number'
+      ? { status: 'ok', lat: p.lat, lon: p.lon, timezone: deps.timezone ?? null, label: p.name }
+      : null);
   const size = Math.min(deps.concurrency ?? BATCH, BATCH);
   const queryOf = (p: ItineraryPlace) => [p.name, p.city, p.country].map((s) => s.trim()).filter(Boolean).join(', ');
   const queries = places.map(queryOf);
-  const unique = [...new Set(queries)];
+  const unique = [...new Set(queries.filter((_, i) => !given[i]))];
   const results = new Map<string, ResolvedPlace>();
   const candidates = new Map<string, GeocodeResult[]>();
   const isoOf = (q: string) => candidates.get(q)?.[0]?.country ?? '';
@@ -53,7 +58,7 @@ export async function resolvePlaces(
       batch.forEach((q) => results.set(q, UNAVAILABLE));
       continue;
     }
-    const placed = [...results.values()].filter((r) => r.lat !== null && r.lon !== null);
+    const placed = [...given.filter((g): g is ResolvedPlace => g !== null), ...results.values()].filter((r) => r.lat !== null && r.lon !== null);
     const focus: LatLon | undefined = placed.length
       ? { lat: placed.reduce((s, r) => s + r.lat!, 0) / placed.length, lon: placed.reduce((s, r) => s + r.lon!, 0) / placed.length }
       : undefined;
@@ -80,8 +85,12 @@ export async function resolvePlaces(
 
   // Lieux trop éloignés des autres : on cherche un meilleur candidat près du centre ; à défaut, on les signale
   // sans coordonnées, sauf si le pays demandé figure dans l'adresse trouvée (ex. aéroport de départ à l'étranger).
-  const placed = [...results.values()].filter((r) => r.status === 'ok');
+  const placed = [...given.filter((g): g is ResolvedPlace => g !== null), ...results.values()].filter((r) => r.status === 'ok');
+  // Fuseau des lieux à coordonnées données : celui du voyage, sinon celui d'un lieu trouvé par recherche.
+  const fallbackTz = deps.timezone ?? [...results.values()].find((r) => r.timezone)?.timezone ?? null;
+  given.forEach((g, i) => { if (g && !g.timezone) given[i] = { ...g, timezone: fallbackTz }; });
   if (placed.length >= 2) {
+    // Les coordonnées données par l'IA ne sont jamais signalées « éloignées » (aéroport de départ, île voisine…).
     const tally = new Map<string, number>();
     for (const [q, r] of results) if (r.status === 'ok') tally.set(isoOf(q), (tally.get(isoOf(q)) ?? 0) + 1);
     const main = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
@@ -103,5 +112,5 @@ export async function resolvePlaces(
       if (!plausible) results.set(q, { ...r, status: 'far', lat: null, lon: null });
     }
   }
-  return queries.map((q) => results.get(q) ?? NOT_FOUND);
+  return queries.map((q, i) => given[i] ?? results.get(q) ?? NOT_FOUND);
 }

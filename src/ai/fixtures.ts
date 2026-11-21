@@ -36,7 +36,7 @@ const stop = (title: string, name: string, startTime: string | null, durationMin
 export const ITINERARY_FIXTURE: ItineraryResponse = {
   v: 1,
   kind: 'itinerary',
-  trip: { name: 'Kyoto express', countries: ['Japon'], currency: 'JPY', visa: { ...visaYes }, bestPeriod: { text: 'Mars à mai et octobre à novembre : doux et sec.', goodMonths: [3, 4, 5, 10, 11], avoidMonths: [7, 8] } },
+  trip: { name: 'Kyoto express', countries: ['Japon'], currency: 'JPY', visa: { ...visaYes }, bestPeriod: { text: 'Mars à mai et octobre à novembre : doux et sec.', goodMonths: [3, 4, 5, 10, 11], avoidMonths: [7, 8] }, timezone: 'Asia/Tokyo' },
   days: [
     { day: 1, title: 'Arrivée', note: '', stops: [stop('Fushimi Inari', 'Fushimi Inari Taisha', '10:00', 120), stop('Hôtel Gion', 'Hotel Gion', null, null, 'lodging')] },
     { day: 2, title: 'Arashiyama', note: '', stops: [stop('Bambouseraie', 'Arashiyama Bamboo Grove', '09:00', 90), stop('Temple Tenryu-ji', 'Tenryu-ji', '11:00', 60)] },
