@@ -93,8 +93,9 @@ export async function handleConnector(req: Request, deps: ConnectorDeps): Promis
   const token = tokenOf(req);
   const raw = await req.text();
   if (raw.length > MAX_BODY) return json({ error: 'Requête trop volumineuse' }, 413);
+  // Jamais de 401 : claude.ai l'interpréterait comme « connexion par compte (OAuth) requise » et échouerait.
+  // Sans jeton valide, le connecteur s'ajoute mais chaque outil répond clairement « adresse invalide ».
   const session = token ? await deps.lastBrief(token) : null;
-  if (!session) return json({ error: 'Adresse du connecteur invalide ou révoquée' }, 401);
 
   let msg: { id?: unknown; method?: unknown; params?: Record<string, unknown> };
   try {
@@ -127,6 +128,9 @@ export async function handleConnector(req: Request, deps: ConnectorDeps): Promis
     case 'tools/list':
       return json({ jsonrpc: '2.0', id, result: { tools: TOOLS } });
     case 'tools/call': {
+      if (!session) {
+        return text(id, "Adresse du connecteur invalide ou révoquée. Dans l'appli Carnet de route : Réglages → Connecteur Claude → Créer une nouvelle adresse, puis remplace l'adresse du connecteur dans claude.ai.", true);
+      }
       const name = msg.params?.name;
       const args = (msg.params?.arguments ?? {}) as Record<string, unknown>;
       if (name !== 'get_itinerary_format' && name !== 'create_trip_draft') {

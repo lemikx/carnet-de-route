@@ -39,9 +39,18 @@ const call = async (name: string, args: unknown, over: Partial<ConnectorDeps> = 
 };
 
 describe('claude-connector', () => {
-  it('refuse sans jeton ou avec un jeton inconnu', async () => {
-    expect((await handleConnector(rpc('tools/list', {}, 1, ''), deps().d)).status).toBe(401);
-    expect((await handleConnector(rpc('tools/list', {}, 1, 'Bearer mauvais'), deps().d)).status).toBe(401);
+  it('sans jeton valide : jamais de 401 (sinon claude.ai tente OAuth), mais aucun outil ne fonctionne', async () => {
+    for (const auth of ['', 'Bearer mauvais']) {
+      const init = await handleConnector(rpc('initialize', { protocolVersion: '2025-06-18' }, 1, auth), deps().d);
+      expect(init.status).toBe(200);
+      const { d, createDraft } = deps();
+      const res = await handleConnector(rpc('tools/call', { name: 'create_trip_draft', arguments: { startDate: '2027-03-08', endDate: '2027-03-10', itinerary: ITINERARY_FIXTURE } }, 1, auth), d);
+      const body = await res.json();
+      expect(res.status).toBe(200);
+      expect(body.result.isError).toBe(true);
+      expect(body.result.content[0].text).toContain('Adresse du connecteur invalide');
+      expect(createDraft).not.toHaveBeenCalled();
+    }
   });
   it('accepte le jeton dans l’adresse', async () => {
     const res = await handleConnector(rpc('tools/list', {}, 1, '', `https://x/functions/v1/claude-connector?token=${TOKEN}`), deps().d);

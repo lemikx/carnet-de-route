@@ -26,7 +26,7 @@ export function ConnectorSection({ repo, serverUrl, online }: { repo: TripReposi
     setAsking(false);
   }, [repo]));
 
-  const header = token ? `Bearer ${token}` : '';
+  const fullUrl = token ? `${serverUrl}?token=${token}` : '';
   return (
     <section className="card form">
       <h2>Connecteur Claude</h2>
@@ -51,16 +51,14 @@ export function ConnectorSection({ repo, serverUrl, online }: { repo: TripReposi
       )}
       {token && (
         <>
+          <label>Adresse à coller dans claude.ai<input readOnly value={fullUrl} /></label>
+          <CopyButton value={fullUrl} label="Copier l’adresse" />
           <ol>
-            <li>Dans claude.ai : <strong>Personnaliser → Connecteurs → Ajouter un connecteur personnalisé</strong>.</li>
-            <li>Nom : <em>Carnet de route</em>. Adresse du serveur : celle ci-dessous.</li>
-            <li>Connexion : <strong>No sign in</strong>, puis dans <strong>Request headers</strong> ajoute l’en-tête <code>Authorization</code> avec la valeur ci-dessous.</li>
+            <li>Ouvre <strong>claude.ai → Paramètres → Connecteurs</strong>.</li>
+            <li>Clique sur <strong>Ajouter un connecteur personnalisé</strong>.</li>
+            <li>Nom : <em>Carnet de route</em>. Adresse : colle l’adresse copiée. Ne remplis rien d’autre, puis <strong>Ajouter</strong>.</li>
           </ol>
-          <label>Adresse du serveur<input readOnly value={serverUrl} /></label>
-          <CopyButton value={serverUrl} />
-          <label>Valeur de l’en-tête Authorization<input readOnly value={header} /></label>
-          <CopyButton value={header} />
-          <p role="status" className="notice">Copie-la maintenant : ce jeton ne sera plus affiché. Ne le partage avec personne.</p>
+          <p role="status" className="notice">Copie-la maintenant : elle ne sera plus affichée. Ne la partage avec personne.</p>
           <button type="button" className="btn btn-danger-text" disabled={!online} onClick={() => setAsking(true)}>Révoquer</button>
         </>
       )}

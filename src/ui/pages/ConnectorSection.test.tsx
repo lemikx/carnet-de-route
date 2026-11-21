@@ -9,9 +9,9 @@ describe('ConnectorSection', () => {
     const u = userEvent.setup();
     render(<ConnectorSection repo={repo} serverUrl="https://abc.supabase.co/functions/v1/claude-connector" online />);
     await u.click(await screen.findByRole('button', { name: 'Créer l’adresse du connecteur' }));
-    expect(await screen.findByLabelText('Adresse du serveur')).toHaveValue('https://abc.supabase.co/functions/v1/claude-connector');
-    expect((screen.getByLabelText('Valeur de l’en-tête Authorization') as HTMLInputElement).value).toMatch(/^Bearer [0-9a-f]{64}$/);
-    expect(screen.getByText(/ne sera plus affiché/)).toBeInTheDocument();
+    expect(((await screen.findByLabelText('Adresse à coller dans claude.ai')) as HTMLInputElement).value)
+      .toMatch(/^https:\/\/abc\.supabase\.co\/functions\/v1\/claude-connector\?token=[0-9a-f]{64}$/);
+    expect(screen.getByText(/ne sera plus affichée/)).toBeInTheDocument();
     await u.click(screen.getByRole('button', { name: 'Révoquer' }));
     await u.click(screen.getAllByRole('button', { name: 'Révoquer' }).pop()!);
     expect(await screen.findByRole('button', { name: 'Créer l’adresse du connecteur' })).toBeInTheDocument();
@@ -22,7 +22,7 @@ describe('ConnectorSection', () => {
     await repo.createConnectorLink();
     render(<ConnectorSection repo={repo} serverUrl="https://x/functions/v1/claude-connector" online />);
     expect(await screen.findByText(/Connecteur actif depuis/)).toBeInTheDocument();
-    expect(screen.queryByLabelText('Valeur de l’en-tête Authorization')).toBeNull();
+    expect(screen.queryByLabelText('Adresse à coller dans claude.ai')).toBeNull();
     expect(screen.getByRole('button', { name: 'Créer une nouvelle adresse' })).toBeInTheDocument();
   });
   it('hors ligne : boutons désactivés', async () => {

@@ -210,8 +210,8 @@ Permet de dire à Claude (claude.ai web ou mobile, Claude Code) : « crée-moi u
    ```bash
    git pull && npm run sync:domain && supabase functions deploy claude-connector --no-verify-jwt
    ```
-3. **Adresse secrète** : appli → **Réglages → Connecteur Claude → Créer l'adresse du connecteur**. Copie l'adresse du serveur et la valeur de l'en-tête (affichée une seule fois).
-4. **claude.ai** → **Personnaliser → Connecteurs → Ajouter un connecteur personnalisé** : nom « Carnet de route », adresse du serveur, connexion **No sign in**, puis **Request headers** : `Authorization` = la valeur copiée.
+3. **Adresse secrète** : appli → **Réglages → Connecteur Claude → Créer l'adresse du connecteur** → **Copier l'adresse** (affichée une seule fois).
+4. **claude.ai** → **Paramètres → Connecteurs → Ajouter un connecteur personnalisé** : nom « Carnet de route », adresse = celle copiée ; ne rien remplir d'autre (pas d'identifiant OAuth).
 5. **Essai** : dans une conversation, active le connecteur et la recherche web, puis demande « Avec Carnet de route, crée-moi un voyage à … du … au … ». Le lien du brouillon s'affiche dans la réponse de Claude.
 
 Révocation : **Réglages → Connecteur Claude → Révoquer** (effet immédiat). Au plus 20 brouillons déposés par jour.
