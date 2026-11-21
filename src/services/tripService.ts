@@ -8,6 +8,7 @@ import {
 } from '../domain/types';
 import type { New, TripRepository } from '../data/TripRepository';
 import { RoutingError, type AutoMode, type RoutingService } from '../routing/RoutingService';
+import { haversineKm } from '../ai/placeResolver';
 
 export class NeedsConfirmationError extends Error {
   constructor(public days: Day[]) {
@@ -69,6 +70,17 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
       await repo.saveLeg({ ...base, durationMin: r.durationMin, distanceKm: r.distanceKm, geometry: r.geometry, error: null });
     } catch (e) {
       const code = e instanceof RoutingError ? e.code : 'NETWORK';
+      // Lieux proches sans itinéraire routier (lieu mal reconnu, chemin piéton…) : estimation plutôt qu'une erreur.
+      const km = haversineKm({ lat: from.lat!, lon: from.lon! }, { lat: to.lat!, lon: to.lon! });
+      if ((code === 'NO_ROUTE' || code === 'NOT_FOUND') && km < 20) {
+        const walk = km < 1.2;
+        const road = Math.round(km * 1.3 * 10) / 10;
+        await repo.saveLeg({
+          ...base, mode: walk ? 'walk' : leg.mode, distanceKm: road, geometry: null, error: null,
+          durationMin: Math.max(1, Math.ceil((road / (walk ? 4.5 : 40)) * 60)),
+        });
+        return;
+      }
       await repo.saveLeg({ ...base, durationMin: null, distanceKm: null, geometry: null, error: ROUTING_MESSAGES[code] ?? ROUTING_MESSAGES.NETWORK });
     }
   }

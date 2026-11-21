@@ -100,7 +100,7 @@ export function createAiService(deps: {
       need(d, ['itinerary_received']);
       const itinerary = d.itinerary!;
       const places = itinerary.days.flatMap((day) => day.stops.map((s) => s.place));
-      const resolved = await resolvePlaces(places, { routing: deps.routing, onProgress });
+      const resolved = await resolvePlaces(places, { routing: deps.routing, onProgress, timezone: itinerary.trip.timezone ?? null });
       const result = await createTripFromItinerary(
         { repo, tripService: deps.tripService, budgetService: deps.budgetService, today: today() },
         { brief: d.brief, itinerary, resolved },

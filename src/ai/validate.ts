@@ -92,6 +92,24 @@ function parseBestPeriod(raw: unknown, where: string, warnings: string[]): BestP
   return { text, goodMonths: good, avoidMonths: avoid };
 }
 
+function coords(p: Obj, where: string, warnings: string[]): { lat: number | null; lon: number | null } {
+  if (p.lat === undefined && p.lon === undefined) return { lat: null, lon: null };
+  const ok = (x: unknown, m: number) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= m;
+  if (ok(p.lat, 90) && ok(p.lon, 180) && !(p.lat === 0 && p.lon === 0)) return { lat: p.lat as number, lon: p.lon as number };
+  warnings.push(`${where} : coordonnées invalides, ignorées (recherche par adresse).`);
+  return { lat: null, lon: null };
+}
+
+function validTimezone(x: unknown): string | null {
+  if (typeof x !== 'string' || x.length > 64) return null;
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: x });
+    return x;
+  } catch {
+    return null;
+  }
+}
+
 export function validateIdeas(raw: unknown): Out<IdeasResponse> {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -172,7 +190,7 @@ export function validateItinerary(raw: unknown, opts: { tripDays: number }): Out
       stops.push({
         title,
         kind: STOP_KINDS.includes(s.kind as StopKind) ? (s.kind as StopKind) : 'activity',
-        place: { name: cleanText(p.name, 200), city: cleanText(p.city, 120), country: cleanText(p.country, 120) },
+        place: { name: cleanText(p.name, 200), city: cleanText(p.city, 120), country: cleanText(p.country, 120), ...coords(p, where, warnings) },
         startTime,
         durationMin,
         note: cleanText(s.note),
@@ -227,6 +245,7 @@ export function validateItinerary(raw: unknown, opts: { tripDays: number }): Out
     currency: /^[A-Z]{3}$/.test(cur) ? cur : 'EUR',
     visa: parseVisa(t.visa, 'Voyage', errors, warnings),
     bestPeriod: parseBestPeriod(t.bestPeriod, 'Voyage', warnings),
+    timezone: validTimezone(t.timezone),
   };
 
   if (errors.length) return { errors };

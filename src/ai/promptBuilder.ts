@@ -37,7 +37,8 @@ const ITINERARY_FORMAT = `{
     "countries": ["Pays"],
     "currency": "JPY (devise locale, code ISO à 3 lettres)",
     "visa": { "required": true, "type": "", "processingDaysMin": 3, "processingDaysMax": 10, "officialUrl": "https://site-officiel", "notes": "" },
-    "bestPeriod": { "text": "Meilleure période pour visiter ce pays, en 1 à 3 phrases", "goodMonths": [11, 12, 1, 2], "avoidMonths": [3, 4] }
+    "bestPeriod": { "text": "Meilleure période pour visiter ce pays, en 1 à 3 phrases", "goodMonths": [11, 12, 1, 2], "avoidMonths": [3, 4] },
+    "timezone": "Europe/Lisbon (fuseau horaire IANA de la destination)"
   },
   "days": [
     {
@@ -48,7 +49,7 @@ const ITINERARY_FORMAT = `{
         {
           "title": "Nom de l'étape",
           "kind": "activity | lodging | point",
-          "place": { "name": "Nom exact du lieu", "city": "Ville", "country": "Pays" },
+          "place": { "name": "Nom exact du lieu", "city": "Ville", "country": "Pays", "lat": 32.6488, "lon": -16.9084 },
           "startTime": "09:30",
           "durationMin": 90,
           "note": "",
@@ -94,7 +95,7 @@ const RULES = `Règles de réponse :
 - Utilise la recherche web pour vérifier les visas (délais de traitement officiels) et les prix.
 - Réponds uniquement avec un seul bloc \`\`\`json, sans texte avant ni après.
 - Heures au format HH:mm, durées en minutes, montants en nombres, dates AAAA-MM-JJ.
-- Chaque lieu doit avoir son nom exact, sa ville et son pays.
+- Chaque lieu doit avoir son nom exact, sa ville, son pays et ses coordonnées GPS précises (« lat », « lon » en degrés décimaux).
 - Pour « bestPeriod » : numéros de mois de 1 à 12 (1 = janvier), appuie-toi sur la recherche web.`;
 
 export function buildIdeasPrompt(brief: Brief, today: string): string {
