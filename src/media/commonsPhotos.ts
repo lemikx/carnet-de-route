@@ -33,10 +33,10 @@ export function buildSearchUrl(query: string, limit: number): string {
     action: 'query',
     generator: 'search',
     gsrnamespace: '6',
-    gsrsearch: query,
+    gsrsearch: `${query} filetype:bitmap`,
     gsrlimit: String(limit),
     prop: 'imageinfo',
-    iiprop: 'url|extmetadata',
+    iiprop: 'url|extmetadata|mime',
     iiurlwidth: '800',
     format: 'json',
     origin: '*',
@@ -48,11 +48,15 @@ interface CommonsPage {
   title?: string;
   imageinfo?: Array<{
     url?: string;
+    mime?: string;
     thumburl?: string;
     descriptionurl?: string;
     extmetadata?: Record<string, { value?: string } | undefined>;
   }>;
 }
+
+const PHOTO_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const NON_PHOTO_TITLE = /\.(pdf|djvu|tiff?|svg)$/i;
 
 export function parseSearchResponse(body: unknown): CommonsPhoto[] {
   const pages = (body as { query?: { pages?: Record<string, CommonsPage> } })?.query?.pages ?? {};
@@ -60,6 +64,8 @@ export function parseSearchResponse(body: unknown): CommonsPhoto[] {
   for (const page of Object.values(pages)) {
     const info = page.imageinfo?.[0];
     if (!info?.url || !info.thumburl || !info.descriptionurl) continue;
+    if (!info.mime || !PHOTO_MIMES.has(info.mime.toLowerCase())) continue;
+    if (NON_PHOTO_TITLE.test((page.title ?? '').trim())) continue;
     const meta = info.extmetadata ?? {};
     const license = meta.LicenseShortName?.value ?? '';
     if (!isFreeLicense(license)) continue;

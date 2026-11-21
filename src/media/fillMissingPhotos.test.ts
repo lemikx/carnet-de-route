@@ -6,7 +6,7 @@ import { fillMissingPhotos } from './fillMissingPhotos';
 
 const photo = (n: string): StopPhoto => ({ photoUrl: `u-${n}`, photoCredit: 'a', photoLicense: 'CC', photoLicenseUrl: null });
 
-function setup(stops: Stop[], find: (s: Stop) => Promise<StopPhoto | null>, save?: (s: Stop, p: StopPhoto) => Promise<void>) {
+function setup(stops: Stop[], find: (s: Stop) => Promise<StopPhoto | null>, save?: (s: Stop, p: StopPhoto | null) => Promise<void>) {
   const saved: string[] = [];
   const tried: string[] = [];
   const opts = {
@@ -64,5 +64,24 @@ describe('fillMissingPhotos', () => {
     await fillMissingPhotos(opts);
     expect(saved).toEqual(['B']);
     expect(tried).toEqual(['A', 'B']);
+  });
+
+  it('remplace une photo PDF par une nouvelle photo', async () => {
+    const stops = [makeStop({ id: 'P', title: 'Temple', photoUrl: 'https://x/Catalog.pdf/page1-800px-Catalog.pdf.jpg' })];
+    const calls: Array<[string, string | null]> = [];
+    const { opts } = setup(stops, async () => photo('new'), async (s, p) => { calls.push([s.id, p ? p.photoUrl : null]); });
+    await fillMissingPhotos(opts);
+    expect(calls).toEqual([['P', null], ['P', 'u-new']]);
+  });
+
+  it('efface la photo d’une étape de transport sans la rechercher', async () => {
+    const stops = [makeStop({ id: 'V', title: 'Vol Bangkok - Toulouse', photoUrl: 'https://x/ok.jpg' })];
+    const calls: Array<[string, string | null]> = [];
+    let searched = 0;
+    const { opts, tried } = setup(stops, async () => { searched += 1; return photo('x'); }, async (s, p) => { calls.push([s.id, p ? p.photoUrl : null]); });
+    await fillMissingPhotos(opts);
+    expect(calls).toEqual([['V', null]]);
+    expect(searched).toBe(0);
+    expect(tried).toEqual(['V']);
   });
 });

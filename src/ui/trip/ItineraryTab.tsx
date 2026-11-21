@@ -16,7 +16,7 @@ import { SaveError } from '../common/SaveError';
 import { useSave } from '../common/useSave';
 import { appleMapsUrl } from '../map/appleMaps';
 import { MapView } from '../map/MapView';
-import { findPhotoForStop } from '../../media/autoPhoto';
+import { findPhotoForStop, isBadPhotoUrl, isTransportStop } from '../../media/autoPhoto';
 import { fillMissingPhotos } from '../../media/fillMissingPhotos';
 import { KIND_LABELS } from './labels';
 import { LegRow } from './LegRow';
@@ -130,7 +130,8 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
   }, []);
   useEffect(() => {
     if (!canRun.current || photoRunning.current) return;
-    const wants = (s: Stop) => !s.photoUrl && s.kind !== 'lodging' && !!s.title && !triedPhotos.current.has(s.id);
+    const wants = (s: Stop) => s.kind !== 'lodging' && !!s.title && !triedPhotos.current.has(s.id)
+      && (s.photoUrl ? isBadPhotoUrl(s.photoUrl) || isTransportStop(s.title) : !isTransportStop(s.title));
     if (!bundle.stops.some(wants)) return;
     photoRunning.current = true;
     const tripId = bundle.trip.id;
@@ -145,7 +146,10 @@ export function ItineraryTab({ bundle, setBundle }: TripTabProps) {
             stopIds,
             getStop: async (id) => (await repo.getBundle(tripId)).stops.find((s) => s.id === id) ?? null,
             find: (stop) => findPhotoForStop(stop.title, stop.address),
-            save: async (stop, photo) => { const b = await service.updateStop({ ...stop, ...photo }); if (mounted.current) setBundle(b); },
+            save: async (stop, photo) => {
+              const b = await service.updateStop({ ...stop, ...(photo ?? { photoUrl: null, photoCredit: null, photoLicense: null, photoLicenseUrl: null }) });
+              if (mounted.current) setBundle(b);
+            },
             isCancelled,
             onAttempt: (id) => { triedPhotos.current.add(id); },
           });
