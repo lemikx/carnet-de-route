@@ -148,3 +148,41 @@ describe('QuestionnairePage — dates liées', () => {
     expect(ret).toHaveValue('2026-12-28');
   });
 });
+
+describe('QuestionnairePage — reprise des dernières réponses', () => {
+  it('pré-remplit avec le dernier brouillon, destination vide, dates passées vidées', async () => {
+    const repo = createMemoryRepository();
+    await repo.saveDraft({
+      stage: 'brief', mode: 'known', ideas: null, chosenIdeaId: null, itinerary: null, tripId: null, protocolVersion: 1, updatedAt: '',
+      brief: {
+        destination: 'Kyoto', startDate: '2026-01-10', endDate: '2026-01-18', departureCity: 'Toulouse', adults: 2, children: 0,
+        travelers: [{ name: 'mika', nationality: 'FR' }, { name: 'fanny', nationality: 'FR' }], budgetPerPersonEur: 2000,
+        travelerTypes: ['adventurer'], tripTypes: [], wishes: ['food'], lodging: ['hotel'], pace: 'balanced', constraints: 'Sans vol de nuit',
+      },
+    });
+    const { u } = renderPage(repo);
+    expect(await screen.findByText(/Réponses reprises de ton dernier questionnaire/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Destination')).toHaveValue('');
+    await u.click(screen.getByRole('button', { name: 'Suivant' }));
+    expect(screen.getByLabelText('Date de départ')).toHaveValue('');
+    await fillDates(u);
+    expect(screen.getByLabelText('Ville de départ')).toHaveValue('Toulouse');
+    await u.click(screen.getByRole('button', { name: 'Suivant' }));
+    expect(screen.getByLabelText('Prénom du voyageur 2 (facultatif)')).toHaveValue('fanny');
+    await u.click(screen.getByRole('button', { name: 'Suivant' }));
+    expect(screen.getByLabelText(/Budget par personne/)).toHaveValue('2000');
+  });
+
+  it('dates encore à venir : conservées', async () => {
+    const { briefFromPrevious } = await import('./questionnaireSteps');
+    const b = briefFromPrevious({ ...emptyBriefForTest(), startDate: '2027-04-10', endDate: '2027-04-18', destination: 'X' }, '2026-11-21');
+    expect([b.startDate, b.endDate, b.destination]).toEqual(['2027-04-10', '2027-04-18', null]);
+  });
+});
+
+function emptyBriefForTest() {
+  return {
+    destination: null, startDate: '', endDate: '', departureCity: null, adults: 1, children: 0, travelers: [], budgetPerPersonEur: null,
+    travelerTypes: [], tripTypes: [], wishes: [], lodging: [], pace: null, constraints: '',
+  } as import('../../ai/types').Brief;
+}

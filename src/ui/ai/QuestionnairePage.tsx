@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../app/AppContext';
 import { LODGINGS, PACES, TRAVELER_TYPES, TRIP_TYPES, WISHES, type Option } from '../../ai/options';
@@ -7,7 +7,7 @@ import { syncEndDate } from '../../domain/days';
 import { useOnline } from '../../offline/useOnline';
 import { SaveError } from '../common/SaveError';
 import { useSave } from '../common/useSave';
-import { OPTIONAL_STEPS, STEPS, emptyBrief, parseAmount, validateStep, withTravelerCount, type StepId } from './questionnaireSteps';
+import { OPTIONAL_STEPS, STEPS, briefFromPrevious, emptyBrief, parseAmount, validateStep, withTravelerCount, type StepId } from './questionnaireSteps';
 
 const TITLES: Record<StepId, string> = {
   destination: 'Où veux-tu aller ?',
@@ -39,7 +39,7 @@ function Checks({ options, value, onChange }: { options: Option[]; value: string
 }
 
 export function QuestionnairePage({ today }: { today?: string }) {
-  const { ai } = useApp();
+  const { ai, repo } = useApp();
   const online = useOnline();
   const navigate = useNavigate();
   const now = today ?? new Date().toISOString().slice(0, 10);
@@ -48,7 +48,30 @@ export function QuestionnairePage({ today }: { today?: string }) {
   const [budgetText, setBudgetText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const id = STEPS[step];
-  const set = (patch: Partial<Brief>) => setBrief((b) => ({ ...b, ...patch }));
+  const [reused, setReused] = useState(false);
+  const touched = useRef(false);
+  const set = (patch: Partial<Brief>) => {
+    touched.current = true;
+    setBrief((b) => ({ ...b, ...patch }));
+  };
+
+  // Reprend les réponses du dernier questionnaire (sauf si l'utilisateur a déjà commencé à répondre).
+  useEffect(() => {
+    let cancelled = false;
+    repo.listDrafts().then(
+      (drafts) => {
+        const last = drafts[0];
+        if (cancelled || !last || touched.current) return;
+        const b = briefFromPrevious(last.brief, now);
+        setBrief(b);
+        setBudgetText(b.budgetPerPersonEur === null ? '' : String(b.budgetPerPersonEur).replace('.', ','));
+        setReused(true);
+      },
+      () => {},
+    );
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repo]);
 
   const finish = useSave(
     useCallback(async (b: Brief) => {
@@ -79,6 +102,7 @@ export function QuestionnairePage({ today }: { today?: string }) {
     <main className="page">
       <p className="muted">Question {step + 1} sur {STEPS.length}</p>
       <h1>{TITLES[id]}</h1>
+      {reused && step === 0 && <p className="muted">Réponses reprises de ton dernier questionnaire : vérifie-les et change ce qui doit l’être.</p>}
       <form className="form" onSubmit={(e) => { e.preventDefault(); next(); }}>
         {id === 'destination' && (
           <label>Destination
