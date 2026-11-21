@@ -70,9 +70,10 @@ export function createTripService(repo: TripRepository, routing: RoutingService)
       await repo.saveLeg({ ...base, durationMin: r.durationMin, distanceKm: r.distanceKm, geometry: r.geometry, error: null });
     } catch (e) {
       const code = e instanceof RoutingError ? e.code : 'NETWORK';
-      // Lieux proches sans itinéraire routier (lieu mal reconnu, chemin piéton…) : estimation plutôt qu'une erreur.
+      // Lieux proches sans itinéraire calculé (lieu mal reconnu, chemin piéton, limite de 40 calculs par minute…) :
+      // estimation d'après la distance plutôt qu'une erreur. Au-delà de 40 km, il y a sans doute la mer entre les deux.
       const km = haversineKm({ lat: from.lat!, lon: from.lon! }, { lat: to.lat!, lon: to.lon! });
-      if ((code === 'NO_ROUTE' || code === 'NOT_FOUND') && km < 20) {
+      if (['NO_ROUTE', 'NOT_FOUND', 'QUOTA', 'NETWORK'].includes(code) && km < 40) {
         const walk = km < 1.2;
         const road = Math.round(km * 1.3 * 10) / 10;
         await repo.saveLeg({

@@ -154,5 +154,7 @@ describe('trajets en ferry ou en avion', () => {
     expect(legFrom('Vol retour')).toMatchObject({ mode: 'plane', durationMin: null, source: 'manual', error: null });
     expect(legFrom('Embarquement')).toMatchObject({ mode: 'plane', durationMin: 600, source: 'manual' });
     expect(legFrom('Plage').mode).toBe('car');
+    // La durée du ferry ou du vol va sur le trajet, pas sur l'étape (sinon elle compte deux fois).
+    expect(b.stops.find((x) => x.title === 'Ferry Funchal → Porto Santo')!.durationMin).toBeNull();
   });
 });
