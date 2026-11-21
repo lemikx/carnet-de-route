@@ -230,3 +230,11 @@ th { color: var(--muted); font-weight: 600; }
 .period-avoid { border-left-color: #d98300; background: var(--warning-bg); color: var(--warning-text); }
 .period-average { border-left-color: var(--muted); }
 .app-version { text-align: center; font-size: 0.75rem; padding: 16px 0 24px; }
+
+/* Photos libres de droits sur les étapes */
+.stop-photo, .stop-photo-preview { margin: 6px 0; }
+.stop-photo img, .stop-photo-preview img { display: block; width: 100%; max-width: 320px; height: auto; border-radius: 8px; }
+.photo-results { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.photo-results li { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; }
+.photo-option { padding: 0; border: 0; background: none; cursor: pointer; }
+.photo-option img { display: block; width: 100%; height: 90px; object-fit: cover; border-radius: 8px; }

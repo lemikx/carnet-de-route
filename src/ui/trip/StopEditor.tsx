@@ -4,6 +4,7 @@ import type { LatLon, RoutingService } from '../../routing/RoutingService';
 import type { StopInput } from '../../services/tripService';
 import { AddressInput } from './AddressInput';
 import { KIND_LABELS } from './labels';
+import { PhotoPicker } from './PhotoPicker';
 
 export function StopEditor({
   routing, initial, defaultTimezone, disabled, focus, onSave, onCancel,
@@ -29,6 +30,10 @@ export function StopEditor({
     phone: initial?.phone ?? '',
     url: initial?.url ?? '',
     reservationId: initial?.reservationId ?? null,
+    photoUrl: initial?.photoUrl ?? null,
+    photoCredit: initial?.photoCredit ?? null,
+    photoLicense: initial?.photoLicense ?? null,
+    photoLicenseUrl: initial?.photoLicenseUrl ?? null,
   }));
   const [error, setError] = useState<string | null>(null);
   const located = v.lat !== null && v.lon !== null;
@@ -83,6 +88,12 @@ export function StopEditor({
           <input type="url" value={v.url} onChange={(e) => setV({ ...v, url: e.target.value })} placeholder="https://" />
         </label>
       </div>
+      <PhotoPicker
+        placeName={v.title || v.address.split(',')[0] || ''}
+        value={{ photoUrl: v.photoUrl ?? null, photoCredit: v.photoCredit ?? null, photoLicense: v.photoLicense ?? null, photoLicenseUrl: v.photoLicenseUrl ?? null }}
+        onChange={(choice) => setV({ ...v, ...choice })}
+        disabled={disabled}
+      />
       <label>
         Note
         <textarea rows={2} value={v.note} onChange={(e) => setV({ ...v, note: e.target.value })} />

@@ -56,6 +56,11 @@ export interface Stop {
   phone: string;
   url: string;
   reservationId: string | null;
+  /** Photo libre de droits (Wikimedia Commons) : image, auteur et licence pour l'attribution. */
+  photoUrl?: string | null;
+  photoCredit?: string | null;
+  photoLicense?: string | null;
+  photoLicenseUrl?: string | null;
 }
 
 export type LegSource = 'auto' | 'manual' | 'reservation';

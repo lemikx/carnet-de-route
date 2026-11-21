@@ -43,6 +43,12 @@ function StopCard({
       <button type="button" className="drag-handle" aria-label={`Déplacer ${stop.title}`} {...attributes} {...listeners} disabled={disabled}>⋮⋮</button>
       <div className="stop-main">
         <div className="stop-title">{stop.title}</div>
+        {stop.photoUrl && (
+          <figure className="stop-photo">
+            <img src={stop.photoUrl} alt="" loading="lazy" />
+            <figcaption className="muted">Photo : {stop.photoCredit} · {stop.photoLicense}</figcaption>
+          </figure>
+        )}
         <div className="stop-meta">
           {stop.startTime && <span>🕘 {stop.startTime}</span>}
           {!stop.startTime && eta && <span>arrivée estimée ~{eta.time}</span>}
