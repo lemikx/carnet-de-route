@@ -299,6 +299,8 @@ th { color: var(--muted); font-weight: 600; }
 .bp-end { display: flex; flex-direction: column; gap: 2px; flex: 1 1 0; min-width: 0; }
 .bp-end-right { text-align: right; align-items: flex-end; }
 .bp-place { font-family: var(--font-heading); font-size: 1.5rem; line-height: 1.1; font-weight: 600; overflow-wrap: anywhere; }
+.bp-code { font-size: 2rem; letter-spacing: 0.04em; }
+.bp-city { font-size: 0.85rem; overflow-wrap: anywhere; }
 .bp-when { font-size: 0.85rem; }
 .bp-mid { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--primary); flex: 0 0 auto; }
 .bp-duration { font-size: 0.8rem; white-space: nowrap; }

@@ -34,6 +34,30 @@ describe('ReservationCard — billet de vol', () => {
     expect(within(card).queryByRole('button', { name: 'Copier le n°' })).toBeNull();
   });
 
+  it('affiche les codes d’aéroport en grand avec la ville dessous, puis terminal, porte et siège', () => {
+    show({ ...base, departureCode: 'CDG', arrivalCode: 'HND', terminal: '2E', gate: 'K41', seat: '14A' });
+    const card = screen.getByTestId('reservation');
+    expect(within(card).getByText('CDG')).toHaveClass('bp-place');
+    expect(within(card).getByText('HND')).toHaveClass('bp-place');
+    expect(within(card).getByText('Paris')).toHaveClass('bp-city');
+    expect(within(card).getByText('Tokyo')).toHaveClass('bp-city');
+    expect(card).toHaveTextContent('Terminal');
+    expect(card).toHaveTextContent('2E');
+    expect(card).toHaveTextContent('Porte');
+    expect(card).toHaveTextContent('K41');
+    expect(card).toHaveTextContent('Siège');
+    expect(card).toHaveTextContent('14A');
+  });
+
+  it('masque les champs non renseignés et garde le nom du lieu sans code', () => {
+    show({ ...base, departureCode: null, arrivalCode: 'HND', terminal: '', gate: null, seat: '14A' });
+    const card = screen.getByTestId('reservation');
+    expect(within(card).getByText('Paris')).toHaveClass('bp-place');
+    expect(card).not.toHaveTextContent('Terminal');
+    expect(card).not.toHaveTextContent('Porte');
+    expect(card).toHaveTextContent('Siège');
+  });
+
   it('sans arrivée : pas de durée ni de lieu d’arrivée', () => {
     show({ ...base, endAt: null, toPlace: null });
     expect(screen.getByTestId('reservation')).not.toHaveTextContent(' h');

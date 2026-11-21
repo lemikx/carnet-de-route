@@ -97,6 +97,12 @@ export interface Reservation {
   url: string;
   phone: string;
   note: string;
+  /** Billet de vol (facultatif) : codes d'aéroport, terminal, porte, siège. */
+  departureCode?: string | null;
+  arrivalCode?: string | null;
+  seat?: string | null;
+  gate?: string | null;
+  terminal?: string | null;
 }
 
 export type ChecklistCategory = 'documents' | 'health' | 'luggage' | 'before_departure';

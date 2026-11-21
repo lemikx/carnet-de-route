@@ -9,6 +9,7 @@ import { RESERVATION_LABELS } from './labels';
 type Draft = New<Reservation> & { id?: string };
 
 const TRANSPORT: ReservationType[] = ['flight', 'train'];
+const cleanCode = (v: string) => v.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
 
 export function ReservationForm({
   routing, tripId, initial, defaultTimezone, disabled, focus, onSave, onCancel,
@@ -36,6 +37,11 @@ export function ReservationForm({
   const [url, setUrl] = useState(initial?.url ?? '');
   const [phone, setPhone] = useState(initial?.phone ?? '');
   const [note, setNote] = useState(initial?.note ?? '');
+  const [departureCode, setDepartureCode] = useState(initial?.departureCode ?? '');
+  const [arrivalCode, setArrivalCode] = useState(initial?.arrivalCode ?? '');
+  const [terminal, setTerminal] = useState(initial?.terminal ?? '');
+  const [gate, setGate] = useState(initial?.gate ?? '');
+  const [seat, setSeat] = useState(initial?.seat ?? '');
   const [error, setError] = useState<string | null>(null);
 
   const isTransport = TRANSPORT.includes(type);
@@ -63,6 +69,10 @@ export function ReservationForm({
       fromPlace: isLodging ? null : fromPlace, toPlace: isLodging || isTransport ? toPlace : null,
       confirmationNumber: confirmationNumber.trim(), price: price === '' ? null : Number(price), currency: currency.toUpperCase(),
       url: url.trim(), phone: phone.trim(), note,
+      ...(type === 'flight' ? {
+        departureCode: departureCode || null, arrivalCode: arrivalCode || null,
+        terminal: terminal.trim() || null, gate: gate.trim() || null, seat: seat.trim() || null,
+      } : { departureCode: null, arrivalCode: null, terminal: null, gate: null, seat: null }),
     });
   }
 
@@ -106,6 +116,34 @@ export function ReservationForm({
           <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
         </label>
       </div>
+      {type === 'flight' && (
+        <>
+          <div className="row">
+            <label>
+              Code aéroport de départ
+              <input value={departureCode} maxLength={4} pattern="[A-Za-z]{0,4}" autoCapitalize="characters" autoComplete="off" placeholder="CDG" onChange={(e) => setDepartureCode(cleanCode(e.target.value))} />
+            </label>
+            <label>
+              Code aéroport d’arrivée
+              <input value={arrivalCode} maxLength={4} pattern="[A-Za-z]{0,4}" autoCapitalize="characters" autoComplete="off" placeholder="LIS" onChange={(e) => setArrivalCode(cleanCode(e.target.value))} />
+            </label>
+          </div>
+          <div className="row">
+            <label>
+              Terminal
+              <input value={terminal} maxLength={8} onChange={(e) => setTerminal(e.target.value)} />
+            </label>
+            <label>
+              Porte
+              <input value={gate} maxLength={8} onChange={(e) => setGate(e.target.value)} />
+            </label>
+            <label>
+              Siège
+              <input value={seat} maxLength={8} onChange={(e) => setSeat(e.target.value)} />
+            </label>
+          </div>
+        </>
+      )}
       <div className="row">
         <label>
           N° de confirmation

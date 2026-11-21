@@ -51,6 +51,9 @@ export function boardingFields(r: Reservation): { label: string; value: string; 
   const out: { label: string; value: string; copy?: boolean }[] = [];
   if (r.title) out.push({ label: 'Vol', value: r.title });
   if (r.confirmationNumber) out.push({ label: 'N° de confirmation', value: r.confirmationNumber, copy: true });
+  if (r.terminal) out.push({ label: 'Terminal', value: r.terminal });
+  if (r.gate) out.push({ label: 'Porte', value: r.gate });
+  if (r.seat) out.push({ label: 'Siège', value: r.seat });
   return out;
 }
 
@@ -67,6 +70,16 @@ function Alert({ inTrip }: { inTrip: boolean }) {
   return inTrip ? null : <p className="alert">Hors des dates du voyage : pas ajoutée à l’itinéraire.</p>;
 }
 
+function Place({ code, name }: { code?: string | null; name: string }) {
+  if (!code) return <span className="bp-place">{name}</span>;
+  return (
+    <>
+      <span className="bp-place bp-code">{code}</span>
+      <span className="bp-city muted">{name}</span>
+    </>
+  );
+}
+
 function BoardingPass(p: Props) {
   const { r } = p;
   const duration = r.endAt ? minutesBetween(r.startAt, r.endAt) : 0;
@@ -80,7 +93,7 @@ function BoardingPass(p: Props) {
       <div className="ticket-body">
         <div className="bp-route">
           <div className="bp-end">
-            <span className="bp-place">{r.fromPlace?.title ?? r.title}</span>
+            <Place code={r.departureCode} name={r.fromPlace?.title ?? r.title} />
             <span className="bp-when muted">{formatDate(r.startAt.date)} · {r.startAt.time}</span>
           </div>
           <div className="bp-mid">
@@ -89,7 +102,7 @@ function BoardingPass(p: Props) {
           </div>
           {r.endAt && (
             <div className="bp-end bp-end-right">
-              <span className="bp-place">{r.toPlace?.title ?? r.title}</span>
+              <Place code={r.arrivalCode} name={r.toPlace?.title ?? r.title} />
               <span className="bp-when muted">{formatDate(r.endAt.date)} · {r.endAt.time}</span>
             </div>
           )}
