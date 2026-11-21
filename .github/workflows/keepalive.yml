@@ -1,0 +1,31 @@
+# Garde la base Supabase active : l'offre gratuite met le projet en pause après une semaine sans activité.
+# Tous les 3 jours, une petite requête en lecture seule (aucune donnée lue ni modifiée).
+name: Maintien de la base Supabase
+
+on:
+  schedule:
+    - cron: '17 6 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Requete de maintien
+        env:
+          SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "Variables VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY absentes" >&2
+            exit 1
+          fi
+          # Lien de partage inexistant : la fonction renvoie null, mais la base est bien sollicitée.
+          code=$(curl -s -o /tmp/r.txt -w "%{http_code}" -X POST "$SUPABASE_URL/rest/v1/rpc/get_shared_roadbook" \
+            -H "apikey: $SUPABASE_KEY" -H "Content-Type: application/json" \
+            --data '{"p_token":"maintien-automatique"}')
+          echo "Réponse : $code $(head -c 200 /tmp/r.txt)"
+          [ "$code" = "200" ]
