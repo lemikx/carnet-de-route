@@ -33,6 +33,8 @@ Suite dans Claude Code (22 novembre 2026) :
 |---|---|
 | 12bb278 | Le bouton « Créer ce voyage avec l'IA » de l'accueil transmet la destination au questionnaire ; règles de création de voyage et d'écriture du code ajoutées à `CLAUDE.md` ; `setup-complet.sql` régénéré. |
 | 5bfaa8e | Roadbook partagé avec « masquer les infos sensibles » : siège, porte et terminal masqués côté base (migration 0010) et côté appli ; codes d'aéroport conservés. |
+| 77dcc4a | Téléphone : pastilles du questionnaire en ligne (règle de formulaire qui les écrasait), boutons du rythme à la bonne taille ; aucun débordement horizontal de 320 à 430 px sur tous les écrans (test e2e ajouté). |
+| 840a197 | Import d'un fichier de voyage (Mes voyages → Importer un fichier) : format de l'appli accepté tel quel, JSON d'une autre IA converti (jours, étapes, heures, durées, lieux, coordonnées, hébergements ; FR et EN), dates demandées si absentes, brouillon à valider ; fichier non reconnu → phrase à donner à Claude avec le connecteur. Conception : `docs/superpowers/specs/2026-11-22-import-fichier-design.md`. |
 
 Migrations Supabase appliquées à la main par Mikael : `0008_stop_photos.sql`, `0009_reservation_flight_fields.sql`, `0010_hide_flight_details.sql`.
 `supabase/setup-complet.sql` contient maintenant les migrations 0001 à 0010 (à régénérer à chaque nouvelle migration).
@@ -52,6 +54,8 @@ Migrations Supabase appliquées à la main par Mikael : `0008_stop_photos.sql`, 
 - Vidéo tuto « Se connecter à Carnet de route » (1 min 16, MP4 format téléphone, écrans du mode démonstration, adresse fictive papa@exemple.fr) fabriquée et remise à Mikael ; elle n'est pas dans le dépôt.
 
 ## Points ouverts
+
+- Import de fichier : texte libre et formats inhabituels non convertis (passer par Claude avec le connecteur) ; pas de checklist, budget ni visa à l'import ; un horaire « 09:00-11:00 » ne garde que le début. Envoyer à Claude tout fichier non reconnu pour ajouter son format.
 
 - Bug de date signalé plus tôt (date bloquée sur avril 2027 à la création) : jamais reproduit. Noter les étapes exactes (écran, dates tapées) s'il revient.
 - Message « Calcul impossible : reconnecte-toi. » sur les trajets : pas un bug, session expirée ; se reconnecter dans Réglages.
