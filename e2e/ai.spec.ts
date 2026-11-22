@@ -92,3 +92,28 @@ test('réponse invalide : message précis, brouillon repris puis supprimé', asy
   await page.getByRole('dialog').getByRole('button', { name: 'Supprimer' }).click();
   await expect(page.getByRole('heading', { name: 'Brouillons IA' })).toHaveCount(0);
 });
+
+test('import d’un fichier JSON d’une autre IA : contrôle puis voyage créé', async ({ page }) => {
+  const foreign = {
+    trip: 'Lisbonne escale',
+    startDate: '2030-05-10',
+    endDate: '2030-05-11',
+    days: [
+      { date: '2030-05-10', activities: [{ time: '9:30', name: 'Tour de Belém', location: { name: 'Torre de Belém', lat: 38.6916, lng: -9.216 }, duration: '2h' }, 'Pastéis de nata'] },
+      { date: '2030-05-11', activities: [{ heure: '14h', titre: 'Quartier Alfama', duree: '1h30' }] },
+    ],
+  };
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Importer un fichier' }).click();
+  await page.getByLabel('Fichier à importer').setInputFiles({ name: 'chatgpt.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(foreign)) });
+  await expect(page.getByText('2 jours, 3 étapes', { exact: false })).toBeVisible();
+  await expect(page.getByLabel('Date de départ')).toHaveValue('2030-05-10');
+  await page.getByRole('button', { name: 'Créer le brouillon' }).click();
+  await expect(page.getByText('2 jours, 3 étapes')).toBeVisible();
+  await page.getByRole('button', { name: 'Créer le voyage' }).click();
+  await page.getByRole('link', { name: 'Ouvrir le voyage' }).click();
+  await expect(page.getByRole('heading', { name: 'Lisbonne escale' })).toBeVisible();
+  await expect(page.getByText('Tour de Belém').first()).toBeVisible();
+  await page.goto('./');
+  await expect(page.getByRole('link', { name: /Lisbonne escale/ })).toBeVisible();
+});
