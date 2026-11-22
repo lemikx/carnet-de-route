@@ -89,7 +89,7 @@ input, select, textarea {
   font: inherit; color: var(--text); background: var(--surface);
   border: 1px solid var(--border); border-radius: 12px; padding: 9px 12px; min-height: 44px; width: 100%;
 }
-input[type='checkbox'] { width: 20px; height: 20px; min-height: 0; accent-color: var(--primary); }
+input[type='checkbox'], input[type='radio'] { width: 20px; height: 20px; min-height: 0; accent-color: var(--primary); }
 input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
   outline: 2px solid var(--primary); outline-offset: 2px;
 }
@@ -250,6 +250,7 @@ th { color: var(--muted); font-weight: 600; }
 /* Étape 3 : création avec l'IA */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.9rem; color: var(--text); flex: 0 0 auto; flex-direction: row; }
+.chips .chip, .form .chip { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 6px; width: auto; min-width: 0; max-width: 100%; white-space: normal; color: var(--text); }
 .idea-list { list-style: none; padding: 0; display: grid; gap: 12px; }
 .idea-card.muted { opacity: 0.7; }
 .visa-badge { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--muted); background: var(--surface); margin: 8px 0; font-size: 0.9rem; }
@@ -314,4 +315,8 @@ th { color: var(--muted); font-weight: 600; }
   .stop { padding: 10px 10px; gap: 4px 8px; }
   .stop-main.has-thumb { padding-right: 76px; min-height: 64px; }
   .stop-photo .stop-thumb { width: 64px; height: 64px; }
+}
+
+@media (max-width: 360px) {
+  .chips .chip, .form .chip { padding: 6px 10px; gap: 4px; font-size: 0.82rem; }
 }
