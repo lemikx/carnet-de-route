@@ -10,9 +10,9 @@ import { parseAmount } from './questionnaireSteps';
 function Where() {
   return <p data-testid="where">{useLocation().pathname}</p>;
 }
-function renderPage(repo: TripRepository = createMemoryRepository()) {
+function renderPage(repo: TripRepository = createMemoryRepository(), url = '/ia/nouveau') {
   render(
-    <MemoryRouter initialEntries={['/ia/nouveau']}>
+    <MemoryRouter initialEntries={[url]}>
       <TestAppProvider repo={repo}>
         <Routes>
           <Route path="/ia/nouveau" element={<QuestionnairePage today="2026-11-12" />} />
@@ -171,6 +171,18 @@ describe('QuestionnairePage — reprise des dernières réponses', () => {
     expect(screen.getByLabelText('Prénom du voyageur 2 (facultatif)')).toHaveValue('fanny');
     await u.click(screen.getByRole('button', { name: 'Suivant' }));
     expect(screen.getByLabelText(/Budget par personne/)).toHaveValue('2000');
+  });
+
+  it('destination de l’URL : pré-remplit le champ, même avec un ancien brouillon', async () => {
+    const repo = createMemoryRepository();
+    await repo.saveDraft({
+      stage: 'brief', mode: 'known', ideas: null, chosenIdeaId: null, itinerary: null, tripId: null, protocolVersion: 1, updatedAt: '',
+      brief: { ...emptyBriefForTest(), destination: 'Kyoto', departureCity: 'Toulouse' },
+    });
+    renderPage(repo, '/ia/nouveau?destination=Lisbonne%20%26%20Porto');
+    expect(screen.getByLabelText('Destination')).toHaveValue('Lisbonne & Porto');
+    expect(await screen.findByText(/Réponses reprises de ton dernier questionnaire/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Destination')).toHaveValue('Lisbonne & Porto');
   });
 
   it('dates encore à venir : conservées', async () => {
