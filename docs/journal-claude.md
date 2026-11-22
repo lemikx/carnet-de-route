@@ -43,6 +43,14 @@ Migrations Supabase appliquées à la main par Mikael : `0008_stop_photos.sql`, 
 - Style de référence vert sauge (accueil, itinéraire, réservations) : https://claude.ai/artifact/UWjpZLkCmGtKURZzwhH2Bw
 - Logo, 3 propositions (choix : n° 3, monogramme) : https://claude.ai/artifact/K5FhXLRobvgAAZ2Ljsb2aN
 
+## Accès des enfants (22 novembre 2026)
+
+- Choix de Mikael : pas de compte séparé pour les enfants ; ils utilisent **le compte de Mikael** sur leur téléphone.
+- Procédure : sur son téléphone, l'enfant ouvre l'appli, tape l'adresse e-mail de Mikael et appuie sur « Recevoir le lien » ; Mikael lui transfère aussitôt l'e-mail ; l'enfant ouvre le lien sur son téléphone (lien à usage unique, valable environ 1 heure). Il reste ensuite connecté sur cet appareil.
+- Conséquences : les enfants voient et peuvent modifier tous les voyages, le budget et les réglages ; consigne de ne pas toucher à Réglages (« Connecteur Claude », « Se déconnecter »). Couper l'accès : Supabase → Authentication → Users → compte de Mikael → déconnecter les sessions.
+- Les liens de connexion ne peuvent être envoyés qu'à l'adresse de Mikael (Resend avec `onboarding@resend.dev`) ; des comptes séparés demanderaient un nom de domaine vérifié chez Resend (ou Brevo) ou l'ajout d'une connexion par mot de passe.
+- Vidéo tuto « Se connecter à Carnet de route » (1 min 16, MP4 format téléphone, écrans du mode démonstration, adresse fictive papa@exemple.fr) fabriquée et remise à Mikael ; elle n'est pas dans le dépôt.
+
 ## Points ouverts
 
 - Bug de date signalé plus tôt (date bloquée sur avril 2027 à la création) : jamais reproduit. Noter les étapes exactes (écran, dates tapées) s'il revient.
