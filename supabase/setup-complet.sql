@@ -719,3 +719,23 @@ begin
 end $$;
 revoke execute on function public.connector_create_draft(text, jsonb, jsonb) from public, anon, authenticated;
 grant execute on function public.connector_create_draft(text, jsonb, jsonb) to service_role;
+-- ===== supabase/migrations/0008_stop_photos.sql =====
+-- Photo libre de droits par étape (Wikimedia Commons) : l'image, l'auteur et la licence,
+-- pour l'attribution obligatoire. Les règles d'accès (RLS) de la table stops ne changent pas.
+
+alter table public.stops
+  add column if not exists photo_url text,
+  add column if not exists photo_credit text,
+  add column if not exists photo_license text,
+  add column if not exists photo_license_url text;
+-- ===== supabase/migrations/0009_reservation_flight_fields.sql =====
+-- Billet de vol : codes d'aéroport (départ, arrivée), siège, porte et terminal, tous facultatifs.
+-- Les règles d'accès (RLS) de la table reservations ne changent pas ; les fonctions de partage
+-- utilisent to_jsonb(r), les nouvelles colonnes suivent donc sans autre modification.
+
+alter table public.reservations
+  add column if not exists departure_code text,
+  add column if not exists arrival_code text,
+  add column if not exists seat text,
+  add column if not exists gate text,
+  add column if not exists terminal text;
