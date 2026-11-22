@@ -165,5 +165,28 @@ describe('aiService', () => {
     const d = await repo.getDraft(old.id);
     expect([d.mode, d.brief.destination, d.stage]).toEqual(['surprise', null, 'ideas_requested']);
   });
+
+  it('importItinerary : valide et enregistre un brouillon « itinéraire reçu » (mode connu)', async () => {
+    const { repo, ai } = make();
+    const r = await ai.importItinerary({ brief: brief({ destination: 'Kyoto' }), text: asReply(ITINERARY_FIXTURE) });
+    expect(r.ok).toBe(true);
+    const drafts = await repo.listDrafts();
+    expect(drafts).toHaveLength(1);
+    expect([drafts[0].mode, drafts[0].stage, drafts[0].brief.destination]).toEqual(['known', 'itinerary_received', 'Kyoto']);
+    expect(drafts[0].itinerary?.days).toHaveLength(3);
+    const created = await ai.create(drafts[0].id);
+    expect((await repo.getBundle(created.tripId)).stops).toHaveLength(5);
+  });
+
+  it('importItinerary : échec de validation, aucun brouillon créé', async () => {
+    const { repo, ai } = make();
+    const bad = structuredClone(ITINERARY_FIXTURE);
+    bad.days[0].stops[0].startTime = '25:00';
+    const r = await ai.importItinerary({ brief: brief(), text: asReply(bad, 'raw') });
+    expect(r.ok).toBe(false);
+    expect(await repo.listDrafts()).toEqual([]);
+    expect((await ai.importItinerary({ brief: brief(), text: 'rien' })).ok).toBe(false);
+    expect(await repo.listDrafts()).toEqual([]);
+  });
 });
 

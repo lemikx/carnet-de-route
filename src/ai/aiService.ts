@@ -22,6 +22,7 @@ export interface AiService {
   receiveIdeas(draftId: string, text: string): Promise<ParseResult<AiDraft>>;
   chooseIdea(draftId: string, ideaId: string): Promise<AiDraft>;
   receiveItinerary(draftId: string, text: string): Promise<ParseResult<AiDraft>>;
+  importItinerary(input: { brief: Brief; text: string }): Promise<ParseResult<AiDraft>>;
   create(draftId: string, onProgress?: (done: number, total: number) => void): Promise<CreationResult>;
 }
 
@@ -91,6 +92,16 @@ export function createAiService(deps: {
       const r = parseItinerary(text, { tripDays: datesBetween(d.brief.startDate, d.brief.endDate).length });
       if (!r.ok) return r;
       const saved = await save(d, { itinerary: r.value, stage: 'itinerary_received' });
+      return { ok: true, value: saved, warnings: r.warnings };
+    },
+
+    async importItinerary({ brief, text }) {
+      const destination = normalizeDestination(brief.destination);
+      const r = parseItinerary(text, { tripDays: datesBetween(brief.startDate, brief.endDate).length });
+      if (!r.ok) return r;
+      const saved = await repo.saveDraft({
+        stage: 'itinerary_received', mode: 'known', brief: { ...brief, destination }, ideas: null, chosenIdeaId: null, itinerary: r.value, tripId: null, protocolVersion: 1, updatedAt: '',
+      });
       return { ok: true, value: saved, warnings: r.warnings };
     },
 

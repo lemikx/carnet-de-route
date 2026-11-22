@@ -129,6 +129,9 @@ export function TripsPage() {
             <button className="btn" onClick={() => navigate('/ia/nouveau')} disabled={!online}>
               Créer avec l’IA
             </button>
+            <button className="btn" onClick={() => navigate('/ia/importer')} disabled={!online}>
+              Importer un fichier
+            </button>
           </div>
         )}
       </div>
