@@ -27,8 +27,15 @@ Récapitulatif d'une conversation Claude (application web), pour reprendre le tr
 | 8d2db01 | Accueil avec recherche, réservations façon billet, vignette compacte sur mobile. |
 | 4322390 | Billet : codes d'aéroport, terminal, porte et siège (migration 0009). |
 
-Migrations Supabase appliquées à la main par Mikael : `0008_stop_photos.sql`, `0009_reservation_flight_fields.sql`.
-`supabase/setup-complet.sql` n'est pas régénéré automatiquement : il ne contient ni 0008 ni 0009.
+Suite dans Claude Code (22 novembre 2026) :
+
+| Version | Contenu |
+|---|---|
+| 12bb278 | Le bouton « Créer ce voyage avec l'IA » de l'accueil transmet la destination au questionnaire ; règles de création de voyage et d'écriture du code ajoutées à `CLAUDE.md` ; `setup-complet.sql` régénéré. |
+| 5bfaa8e | Roadbook partagé avec « masquer les infos sensibles » : siège, porte et terminal masqués côté base (migration 0010) et côté appli ; codes d'aéroport conservés. |
+
+Migrations Supabase appliquées à la main par Mikael : `0008_stop_photos.sql`, `0009_reservation_flight_fields.sql`, `0010_hide_flight_details.sql`.
+`supabase/setup-complet.sql` contient maintenant les migrations 0001 à 0010 (à régénérer à chaque nouvelle migration).
 
 ## Maquettes (artefacts Claude Design)
 
@@ -38,9 +45,13 @@ Migrations Supabase appliquées à la main par Mikael : `0008_stop_photos.sql`, 
 
 ## Points ouverts
 
-- Le bouton « Créer ce voyage avec l'IA » de l'accueil n'envoie pas la destination saisie au questionnaire.
-- Dans un roadbook partagé, siège, porte et terminal restent visibles (le numéro de confirmation et le prix sont masqués) : à masquer si Mikael le souhaite.
-- Message « Calcul impossible : reconnecte-toi. » sur les trajets : session expirée, se reconnecter dans Réglages.
-- Bug de date signalé plus tôt (date bloquée sur avril 2027 à la création) : jamais reproduit ni corrigé.
-- L'adresse secrète du connecteur Carnet de route a été collée dans la conversation : la régénérer dans les Réglages.
-- `npm run test:db` n'a pas été lancé (pas de PostgreSQL local dans l'environnement de travail).
+- Bug de date signalé plus tôt (date bloquée sur avril 2027 à la création) : jamais reproduit. Noter les étapes exactes (écran, dates tapées) s'il revient.
+- Message « Calcul impossible : reconnecte-toi. » sur les trajets : pas un bug, session expirée ; se reconnecter dans Réglages.
+
+## Points réglés le 22 novembre 2026
+
+- Bouton « Créer ce voyage avec l'IA » de l'accueil : destination transmise (12bb278).
+- Siège, porte et terminal masqués dans le roadbook partagé (5bfaa8e, migration 0010 appliquée).
+- Adresse secrète du connecteur Carnet de route régénérée par Mikael et remplacée dans claude.ai.
+- `npm run test:db` lancé dans Claude Code : tous les tests de la base passent (migrations 0001 à 0010).
+- `setup-complet.sql` à jour (0001 à 0010).
