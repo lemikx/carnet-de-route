@@ -35,7 +35,7 @@ export function stripSensitive(bundle: TripBundle): TripBundle {
       url: s.reservationId && linked.has(s.reservationId) ? '' : s.url,
     })),
     reservations: bundle.reservations.map((r) => ({
-      ...r, confirmationNumber: '', price: null, currency: '', url: '', note: '',
+      ...r, confirmationNumber: '', price: null, currency: '', url: '', note: '', seat: null, gate: null, terminal: null,
     })),
     contacts: bundle.contacts.map((c) => ({ ...c, note: '' })),
   };

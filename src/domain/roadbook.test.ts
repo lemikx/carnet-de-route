@@ -43,6 +43,14 @@ describe('buildRoadbook', () => {
 });
 
 describe('stripSensitive', () => {
+  it('masque siège, porte et terminal, garde les codes d’aéroport', () => {
+    const b = sampleBundle();
+    b.reservations[0] = { ...b.reservations[0], departureCode: 'CDG', arrivalCode: 'HND', seat: '14C', gate: 'K42', terminal: '2E' };
+    const r = stripSensitive(b).reservations[0];
+    expect([r.seat, r.gate, r.terminal]).toEqual([null, null, null]);
+    expect([r.departureCode, r.arrivalCode]).toEqual(['CDG', 'HND']);
+  });
+
   it('ne modifie pas le bundle d’origine', () => {
     const b = sampleBundle();
     stripSensitive(b);
