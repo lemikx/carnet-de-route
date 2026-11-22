@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../app/AppContext';
 import { LODGINGS, PACES, TRAVELER_TYPES, TRIP_TYPES, WISHES, type Option } from '../../ai/options';
 import type { Brief, Pace } from '../../ai/types';
@@ -43,7 +43,10 @@ export function QuestionnairePage({ today }: { today?: string }) {
   const online = useOnline();
   const navigate = useNavigate();
   const now = today ?? new Date().toISOString().slice(0, 10);
-  const [brief, setBrief] = useState<Brief>(emptyBrief);
+  const [params] = useSearchParams();
+  // Destination venant de l'accueil : prioritaire sur la reprise du dernier brouillon.
+  const urlDestination = useRef(params.get('destination')?.trim() || null).current;
+  const [brief, setBrief] = useState<Brief>(() => ({ ...emptyBrief(), destination: urlDestination }));
   const [step, setStep] = useState(0);
   const [budgetText, setBudgetText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +66,7 @@ export function QuestionnairePage({ today }: { today?: string }) {
         const last = drafts[0];
         if (cancelled || !last || touched.current) return;
         const b = briefFromPrevious(last.brief, now);
+        if (urlDestination) b.destination = urlDestination;
         setBrief(b);
         setBudgetText(b.budgetPerPersonEur === null ? '' : String(b.budgetPerPersonEur).replace('.', ','));
         setReused(true);

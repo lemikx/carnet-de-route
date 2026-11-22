@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TestAppProvider } from '../../app/AppContext';
 import { createMemoryRepository } from '../../data/memoryRepository';
 import type { TripRepository } from '../../data/TripRepository';
@@ -99,5 +99,44 @@ describe('TripsPage — recherche', () => {
     expect(screen.getByText('Aucun voyage ne correspond.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Créer ce voyage avec l’IA' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Mes voyages' })).toBeInTheDocument();
+  });
+});
+
+describe('TripsPage : recherche sans résultat', () => {
+  function Where() {
+    const l = useLocation();
+    return <p data-testid="where">{l.pathname + l.search}</p>;
+  }
+  async function renderWithTrip() {
+    const repo = createMemoryRepository();
+    await repo.createTrip({
+      name: 'Japon', startDate: '2026-12-03', endDate: '2026-12-10', countries: ['JP'], localCurrency: 'JPY', homeTimezone: 'Europe/Paris', updatedAt: '',
+    });
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <TestAppProvider repo={repo}>
+          <Routes>
+            <Route path="/" element={<TripsPage />} />
+            <Route path="*" element={<Where />} />
+          </Routes>
+        </TestAppProvider>
+      </MemoryRouter>,
+    );
+    return userEvent.setup();
+  }
+
+  it('transmet la destination tapée au questionnaire IA', async () => {
+    const u = await renderWithTrip();
+    await screen.findByText('Japon');
+    await u.type(screen.getByLabelText('Où voulez-vous aller ?'), 'Lisbonne & Porto');
+    await u.click(await screen.findByRole('button', { name: 'Créer ce voyage avec l’IA' }));
+    expect(screen.getByTestId('where')).toHaveTextContent('/ia/nouveau?destination=Lisbonne%20%26%20Porto');
+  });
+
+  it('sans destination tapée, le bouton d’en-tête ouvre le questionnaire sans paramètre', async () => {
+    const u = await renderWithTrip();
+    await screen.findByText('Japon');
+    await u.click(screen.getByRole('button', { name: 'Créer avec l’IA' }));
+    expect(screen.getByTestId('where').textContent).toBe('/ia/nouveau');
   });
 });

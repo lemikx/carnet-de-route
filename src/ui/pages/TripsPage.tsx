@@ -149,7 +149,7 @@ export function TripsPage() {
       {all.length > 0 && list.length === 0 && (
         <div className="empty" role="status">
           <p>Aucun voyage ne correspond.</p>
-          <button className="btn btn-primary" onClick={() => navigate('/ia/nouveau')} disabled={!online}>Créer ce voyage avec l’IA</button>
+          <button className="btn btn-primary" onClick={() => navigate(query.trim() ? `/ia/nouveau?destination=${encodeURIComponent(query.trim())}` : '/ia/nouveau')} disabled={!online}>Créer ce voyage avec l’IA</button>
         </div>
       )}
 
